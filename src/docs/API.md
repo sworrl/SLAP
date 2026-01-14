@@ -5,7 +5,7 @@ SLAP provides a REST API and WebSocket interface for controlling the scoreboard.
 ## Base URL
 
 ```
-http://localhost:8080/api
+http://localhost:9876/api
 ```
 
 ## REST Endpoints
@@ -205,7 +205,7 @@ GET /api/config
     "enabled": true
   },
   "web": {
-    "port": 8080
+    "port": 9876
   },
   "simulator": {
     "enabled": false
@@ -230,7 +230,7 @@ SLAP uses Socket.IO for real-time updates.
 ### Connection
 
 ```javascript
-const socket = io('http://localhost:8080');
+const socket = io('http://localhost:9876');
 
 socket.on('connect', () => {
   console.log('Connected to SLAP');
@@ -315,23 +315,23 @@ All endpoints return errors in this format:
 
 ```bash
 # Get current state
-curl http://localhost:8080/api/state
+curl http://localhost:9876/api/state
 
 # Trigger home goal
-curl -X POST http://localhost:8080/api/goal \
+curl -X POST http://localhost:9876/api/goal \
   -H "Content-Type: application/json" \
   -d '{"side": "HOME"}'
 
 # Set score manually
-curl -X POST http://localhost:8080/api/state \
+curl -X POST http://localhost:9876/api/state \
   -H "Content-Type: application/json" \
   -d '{"home": 3, "away": 1}'
 
 # Start simulator
-curl -X POST http://localhost:8080/api/simulator/start
+curl -X POST http://localhost:9876/api/simulator/start
 
 # Add 2-minute penalty to away team
-curl -X POST http://localhost:8080/api/penalty \
+curl -X POST http://localhost:9876/api/penalty \
   -H "Content-Type: application/json" \
   -d '{"side": "AWAY", "duration": 120}'
 ```
@@ -341,7 +341,7 @@ curl -X POST http://localhost:8080/api/penalty \
 ```python
 import requests
 
-BASE_URL = "http://localhost:8080/api"
+BASE_URL = "http://localhost:9876/api"
 
 # Get state
 state = requests.get(f"{BASE_URL}/state").json()

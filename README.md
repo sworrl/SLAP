@@ -23,7 +23,7 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 ./deploy.sh start
 
 # Open in browser
-# http://localhost:8080
+# http://localhost:9876
 ```
 
 ## Commands
@@ -47,7 +47,7 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 
 ## Web Dashboard
 
-The dashboard at http://localhost:8080 provides:
+The dashboard at http://localhost:9876 provides:
 
 - **Live scorebug preview** - See exactly what appears on broadcast
 - **Preview/Live toggle** - Switch between simulation and real hardware
@@ -96,7 +96,7 @@ Edit `src/config/default.json`:
     "enabled": true
   },
   "web": {
-    "port": 8080
+    "port": 9876
   }
 }
 ```

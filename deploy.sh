@@ -22,7 +22,7 @@ SRC_DIR="$SCRIPT_DIR/src"
 VENV_DIR="$SRC_DIR/venv"
 PID_FILE="/tmp/slap.pid"
 LOG_FILE="/tmp/slap.log"
-DEFAULT_PORT=8080
+DEFAULT_PORT=9876
 
 # Colors for output
 RED='\033[0;31m'
@@ -313,7 +313,7 @@ show_help() {
     echo "  help        Show this help message"
     echo ""
     echo "Start options:"
-    echo "  --port, -p <port>   Web server port (default: 8080)"
+    echo "  --port, -p <port>   Web server port (default: 9876)"
     echo "  --simulate, -s      Run in simulation mode (default)"
     echo "  --debug, -d         Enable debug logging"
     echo ""

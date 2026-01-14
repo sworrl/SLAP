@@ -34,7 +34,7 @@ That's it! The deploy script handles:
 ./deploy.sh status
 ```
 
-Open http://localhost:8080 - you should see the SLAP dashboard.
+Open http://localhost:9876 - you should see the SLAP dashboard.
 
 ## Hardware Setup
 
@@ -101,7 +101,7 @@ Edit `src/config/default.json`:
     "enabled": true
   },
   "web": {
-    "port": 8080
+    "port": 9876
   }
 }
 ```
@@ -157,7 +157,7 @@ SLAP sends these commands to CasparCG:
 ### Using deploy.sh (Recommended)
 
 ```bash
-# Start with defaults (simulation mode, port 8080)
+# Start with defaults (simulation mode, port 9876)
 ./deploy.sh start
 
 # Start on custom port

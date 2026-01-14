@@ -187,6 +187,173 @@ Hex: 02 48 ... 20 33 20 ... 20 32 20 ... 32 ... 30 32 30 30 ... 03
 - Some fields marked as "Reserved" may contain data in newer firmware
 - RS-232 should be set to "ProLine data format" (not "VIDEO CHAR" mode)
 
+---
+
+## RS-232 Protocol Capture / Snooping
+
+To reverse-engineer or debug the MP-70 protocol, you can capture the serial data stream using hardware or software methods.
+
+### Hardware Snooping (Recommended)
+
+For capturing live data between the MP-70 and an existing device without interruption:
+
+#### Equipment Needed
+
+| Item | Description | Example |
+|------|-------------|---------|
+| **Y-Cable / Splitter** | DB-9 RS-232 Y-cable or breakout board | DB-9 serial tap |
+| **USB-Serial Adapter** | USB to RS-232 adapter (FTDI recommended) | FTDI FT232RL |
+| **Terminal Software** | Serial capture software | TeraTerm, PuTTY, minicom |
+
+#### Wiring Diagram
+
+```
+MP-70 Controller                         Scoreboard Display
+     |                                        |
+     | TX (Pin 3) ----------+---------------> RX
+     |                      |
+     |                      v
+     |              [Snooper RX]
+     |              USB-Serial Adapter
+     |              (capture only)
+     |
+     +---------------------------------------- GND
+```
+
+**Key Points:**
+- Only connect TX from MP-70 to your snooper's RX
+- Do NOT connect your snooper's TX (this is passive listening)
+- Connect GND between all devices
+- The original connection remains intact
+
+#### Pre-made Snooping Solutions
+
+1. **RS-232 Protocol Analyzer** - Hardware devices like the Saleae Logic Analyzer with serial decoder
+2. **Serial Port Splitter** - DB-9 Y-cable that duplicates TX to two destinations
+3. **DIY Breakout Board** - Simple breadboard with screw terminals
+
+### Software Capture
+
+If you have direct access to the serial port (MP-70 connected only to your computer):
+
+#### Linux
+
+```bash
+# Raw binary capture using cat
+cat /dev/ttyUSB0 > capture.bin
+
+# Using stty for proper settings first
+stty -F /dev/ttyUSB0 9600 cs8 -cstopb -parenb raw
+cat /dev/ttyUSB0 | tee capture.bin | hexdump -C
+
+# Using screen with logging
+screen -L -Logfile capture.log /dev/ttyUSB0 9600
+
+# Using minicom
+minicom -D /dev/ttyUSB0 -b 9600 -C capture.log
+```
+
+#### Windows
+
+- **TeraTerm**: File > Log > Start logging (binary mode)
+- **PuTTY**: Session > Logging > All session output
+- **RealTerm**: Capture > Start, select binary format
+
+#### macOS
+
+```bash
+# Using screen
+screen -L /dev/tty.usbserial-XXXXX 9600
+
+# Using minicom (via Homebrew)
+brew install minicom
+minicom -D /dev/tty.usbserial-XXXXX -b 9600 -C capture.log
+```
+
+### Analyzing Captured Data
+
+Once you have a binary capture file:
+
+```bash
+# View hex dump
+hexdump -C capture.bin | less
+
+# Find packet boundaries (STX = 0x02, ETX = 0x03)
+hexdump -C capture.bin | grep "02.*03"
+
+# Using Python for analysis
+python3 -c "
+data = open('capture.bin', 'rb').read()
+# Find all packets (STX to ETX)
+packets = []
+start = 0
+while True:
+    stx = data.find(b'\x02', start)
+    if stx == -1:
+        break
+    etx = data.find(b'\x03', stx)
+    if etx == -1:
+        break
+    packets.append(data[stx:etx+1])
+    start = etx + 1
+print(f'Found {len(packets)} packets')
+for i, p in enumerate(packets[:5]):
+    print(f'Packet {i}: {len(p)} bytes, type={chr(p[1]) if len(p)>1 else \"?\"}')
+"
+```
+
+### Logic Analyzer Setup
+
+For detailed timing and protocol analysis:
+
+1. **Saleae Logic Analyzer** (recommended)
+   - Connect CH0 to TX line
+   - Set async serial analyzer: 9600 baud, 8N1
+   - Export decoded data as CSV or binary
+
+2. **sigrok / PulseView** (open source)
+   ```bash
+   # Install on Linux
+   sudo apt install sigrok pulseview
+
+   # Capture with compatible hardware
+   pulseview  # GUI for visual analysis
+   ```
+
+3. **Bus Pirate** (budget option)
+   - Connect MISO to TX line
+   - Use UART sniffer mode at 9600 baud
+
+### Tips for Reverse Engineering
+
+1. **Trigger Score Changes** - Manually adjust scores during capture to identify which bytes change
+2. **Record Clock Changes** - Watch the countdown timer to identify clock position
+3. **Note Penalties** - Add penalties and observe which fields populate
+4. **Compare Periods** - Advance through periods (1st, 2nd, 3rd, OT) to find period byte
+5. **Document Everything** - Keep notes on byte positions and observed values
+
+### Sample Capture Session
+
+```bash
+# 1. Configure port
+stty -F /dev/ttyUSB0 9600 cs8 -cstopb -parenb raw
+
+# 2. Start capture in one terminal
+cat /dev/ttyUSB0 > session_$(date +%Y%m%d_%H%M%S).bin &
+
+# 3. Monitor in another terminal
+tail -f session_*.bin | hexdump -C
+
+# 4. On the MP-70:
+#    - Set home score to 1, watch for change
+#    - Set away score to 2, watch for change
+#    - Start clock, observe continuous updates
+#    - Add penalty, note new data
+
+# 5. Stop capture
+kill %1
+```
+
 ## References
 
 - [Trans-Lux Fair-Play MP-70 Manual](https://www.fair-play.com/wp-content/uploads/2023/03/98-0002-29MP-50_MP-70.pdf)
