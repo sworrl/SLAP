@@ -303,6 +303,29 @@ def do_status():
     print_warning("SLAP is not running")
     return 1
 
+
+def do_restart(args):
+    """Restart SLAP server"""
+    do_stop()
+    time.sleep(1)
+    do_start(args)
+
+
+def do_logs(args):
+    """Show SLAP logs"""
+    if not LOG_FILE.exists():
+        print_warning("No log file found")
+        return
+
+    if args.follow:
+        try:
+            subprocess.run(["tail", "-f", str(LOG_FILE)])
+        except KeyboardInterrupt:
+            pass
+    else:
+        lines = args.lines or 50
+        subprocess.run(["tail", "-n", str(lines), str(LOG_FILE)])
+
 def show_help():
     """Show help message"""
     print("SLAP - Scoreboard Live Automation Platform")
@@ -315,7 +338,9 @@ def show_help():
     print("  uninstall   Remove SLAP installation")
     print("  start       Start SLAP server")
     print("  stop        Stop SLAP server")
+    print("  restart     Restart SLAP server")
     print("  status      Check if SLAP is running")
+    print("  logs        Show SLAP logs")
     print("  help        Show this help message")
     print()
     print("Start options:")
@@ -323,9 +348,15 @@ def show_help():
     print("  --simulate, -s      Run in simulation mode (default)")
     print("  --debug, -d         Enable debug logging")
     print()
+    print("Logs options:")
+    print("  --follow, -f        Follow log output in real-time")
+    print("  --lines, -n <num>   Number of lines to show (default: 50)")
+    print()
     print("Examples:")
     print(f"  {sys.argv[0]} install")
-    print(f"  {sys.argv[0]} start --port 9876 --simulate")
+    print(f"  {sys.argv[0]} start --port 9876")
+    print(f"  {sys.argv[0]} restart")
+    print(f"  {sys.argv[0]} logs -f")
     print(f"  {sys.argv[0]} stop")
     print()
 
@@ -335,10 +366,12 @@ def main():
         add_help=False
     )
     parser.add_argument("command", nargs="?", default="help",
-                        choices=["install", "update", "uninstall", "start", "stop", "status", "help"])
+                        choices=["install", "update", "uninstall", "start", "stop", "restart", "status", "logs", "help"])
     parser.add_argument("--port", "-p", type=int, default=None)
     parser.add_argument("--simulate", "-s", action="store_true")
     parser.add_argument("--debug", "-d", action="store_true")
+    parser.add_argument("--follow", "-f", action="store_true")
+    parser.add_argument("--lines", "-n", type=int, default=50)
     parser.add_argument("--help", "-h", action="store_true")
 
     args = parser.parse_args()
@@ -353,7 +386,9 @@ def main():
         "uninstall": do_uninstall,
         "start": lambda: do_start(args),
         "stop": do_stop,
+        "restart": lambda: do_restart(args),
         "status": do_status,
+        "logs": lambda: do_logs(args),
     }
 
     if args.command in commands:
