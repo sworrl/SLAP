@@ -28,6 +28,8 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 
 ## Commands
 
+### SLAP
+
 ```bash
 ./deploy.sh install     # Install SLAP and dependencies
 ./deploy.sh update      # Update/reinstall dependencies
@@ -36,6 +38,17 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 ./deploy.sh stop        # Stop SLAP server
 ./deploy.sh status      # Check if running
 ```
+
+### CasparCG
+
+```bash
+./deploy.sh caspar-install  # Download and install CasparCG
+./deploy.sh caspar-start    # Start CasparCG server
+./deploy.sh caspar-stop     # Stop CasparCG server
+./deploy.sh caspar-status   # Check CasparCG status
+```
+
+CasparCG installs to `~/.local/share/casparcg/` for compatibility with immutable Linux systems (Fedora Silverblue, Ubuntu Core, etc.).
 
 ### Start Options
 
@@ -55,6 +68,7 @@ The dashboard at http://localhost:9876 provides:
 - **Goal buttons** - Trigger goal animations
 - **Clock controls** - Set period and game time
 - **Penalty controls** - Add 2-minute or 5-minute penalties
+- **CasparCG control** - Start/stop CasparCG server, connect/disconnect
 - **Connection status** - Monitor serial port and CasparCG
 
 ## Project Structure

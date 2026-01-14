@@ -305,6 +305,244 @@ def create_app(config_path=None) -> Flask:
 
         return jsonify({"status": "ok", "mode": _current_mode})
 
+    # ============ CasparCG Server Control API ============
+
+    @app.route("/api/caspar/status", methods=["GET"])
+    def caspar_server_status():
+        """Get CasparCG server status."""
+        import subprocess
+        import os
+
+        result = {
+            "installed": False,
+            "running": False,
+            "binary": None,
+            "amcp_port": 5250,
+            "amcp_listening": False,
+            "connected": state.caspar_connected
+        }
+
+        # Check if installed
+        caspar_paths = [
+            os.path.expanduser("~/.local/bin/casparcg"),
+            os.path.expanduser("~/.local/share/casparcg/bin/casparcg"),
+            "/usr/bin/casparcg",
+            "/opt/casparcg/bin/casparcg"
+        ]
+
+        for path in caspar_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                result["installed"] = True
+                result["binary"] = path
+                break
+
+        # Check if binary exists via which
+        if not result["installed"]:
+            try:
+                which_result = subprocess.run(["which", "casparcg"], capture_output=True, text=True)
+                if which_result.returncode == 0:
+                    result["installed"] = True
+                    result["binary"] = which_result.stdout.strip()
+            except:
+                pass
+
+        # Check if running
+        pid_file = "/tmp/casparcg.pid"
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file) as f:
+                    pid = int(f.read().strip())
+                # Check if process exists
+                os.kill(pid, 0)
+                result["running"] = True
+                result["pid"] = pid
+            except (ValueError, ProcessLookupError, PermissionError):
+                pass
+
+        # Also check by process name
+        if not result["running"]:
+            try:
+                pgrep = subprocess.run(["pgrep", "-f", "casparcg"], capture_output=True, text=True)
+                if pgrep.returncode == 0 and pgrep.stdout.strip():
+                    result["running"] = True
+                    result["pid"] = int(pgrep.stdout.strip().split()[0])
+            except:
+                pass
+
+        # Check if AMCP port is listening
+        try:
+            ss = subprocess.run(["ss", "-tln"], capture_output=True, text=True)
+            if ":5250 " in ss.stdout:
+                result["amcp_listening"] = True
+        except:
+            pass
+
+        return jsonify(result)
+
+    @app.route("/api/caspar/start", methods=["POST"])
+    def caspar_server_start():
+        """Start CasparCG server."""
+        import subprocess
+        import os
+
+        # Check if already running
+        pid_file = "/tmp/casparcg.pid"
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file) as f:
+                    pid = int(f.read().strip())
+                os.kill(pid, 0)
+                return jsonify({"status": "ok", "message": "CasparCG already running", "pid": pid})
+            except:
+                pass
+
+        # Find binary
+        caspar_bin = None
+        caspar_paths = [
+            os.path.expanduser("~/.local/bin/casparcg"),
+            os.path.expanduser("~/.local/share/casparcg/bin/casparcg"),
+            "/usr/bin/casparcg",
+            "/opt/casparcg/bin/casparcg"
+        ]
+
+        for path in caspar_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                caspar_bin = path
+                break
+
+        if not caspar_bin:
+            try:
+                which_result = subprocess.run(["which", "casparcg"], capture_output=True, text=True)
+                if which_result.returncode == 0:
+                    caspar_bin = which_result.stdout.strip()
+            except:
+                pass
+
+        if not caspar_bin:
+            return jsonify({"error": "CasparCG not installed"}), 404
+
+        # Determine working directory
+        caspar_dir = os.path.expanduser("~/.local/share/casparcg")
+        if not os.path.isdir(caspar_dir):
+            caspar_dir = os.path.dirname(caspar_bin)
+
+        # Set library path
+        env = os.environ.copy()
+        lib_path = os.path.join(os.path.expanduser("~/.local/share/casparcg"), "lib")
+        if os.path.isdir(lib_path):
+            env["LD_LIBRARY_PATH"] = lib_path + ":" + env.get("LD_LIBRARY_PATH", "")
+
+        # Start CasparCG
+        log_file = "/tmp/casparcg.log"
+        try:
+            with open(log_file, "w") as log:
+                process = subprocess.Popen(
+                    [caspar_bin],
+                    cwd=caspar_dir,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    start_new_session=True
+                )
+
+            with open(pid_file, "w") as f:
+                f.write(str(process.pid))
+
+            # Wait briefly and check if running
+            import time
+            time.sleep(2)
+
+            try:
+                os.kill(process.pid, 0)
+                logger.info(f"CasparCG started with PID {process.pid}")
+                return jsonify({"status": "ok", "pid": process.pid})
+            except ProcessLookupError:
+                return jsonify({"error": "CasparCG failed to start", "log": log_file}), 500
+
+        except Exception as e:
+            logger.error(f"Failed to start CasparCG: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/caspar/stop", methods=["POST"])
+    def caspar_server_stop():
+        """Stop CasparCG server."""
+        import os
+        import signal
+
+        pid_file = "/tmp/casparcg.pid"
+        pid = None
+
+        # Get PID from file
+        if os.path.exists(pid_file):
+            try:
+                with open(pid_file) as f:
+                    pid = int(f.read().strip())
+            except:
+                pass
+
+        # Also check by process name
+        if not pid:
+            import subprocess
+            try:
+                pgrep = subprocess.run(["pgrep", "-f", "casparcg"], capture_output=True, text=True)
+                if pgrep.returncode == 0 and pgrep.stdout.strip():
+                    pid = int(pgrep.stdout.strip().split()[0])
+            except:
+                pass
+
+        if not pid:
+            return jsonify({"status": "ok", "message": "CasparCG not running"})
+
+        # Stop the process
+        try:
+            os.kill(pid, signal.SIGTERM)
+            import time
+            time.sleep(2)
+
+            # Force kill if still running
+            try:
+                os.kill(pid, 0)
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+
+            logger.info(f"CasparCG stopped (PID: {pid})")
+        except ProcessLookupError:
+            pass
+        except Exception as e:
+            logger.error(f"Error stopping CasparCG: {e}")
+
+        # Remove PID file
+        try:
+            os.remove(pid_file)
+        except:
+            pass
+
+        # Update state
+        state.caspar_connected = False
+
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/caspar/connect", methods=["POST"])
+    def caspar_connect():
+        """Connect SLAP to CasparCG."""
+        if _caspar_client:
+            if _caspar_client.connect():
+                state.caspar_connected = True
+                return jsonify({"status": "ok", "connected": True})
+            else:
+                state.caspar_connected = False
+                return jsonify({"status": "error", "connected": False, "error": "Connection failed"}), 503
+        return jsonify({"error": "CasparCG client not configured"}), 503
+
+    @app.route("/api/caspar/disconnect", methods=["POST"])
+    def caspar_disconnect():
+        """Disconnect SLAP from CasparCG."""
+        if _caspar_client:
+            _caspar_client.disconnect()
+            state.caspar_connected = False
+        return jsonify({"status": "ok", "connected": False})
+
     # ============ WebSocket Events ============
 
     @socketio.on("connect")

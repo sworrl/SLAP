@@ -126,13 +126,53 @@ Edit `src/config/default.json`:
 
 ## CasparCG Setup
 
-### Installing Templates
+### Installing CasparCG via Deploy Script
 
-Copy the SLAP templates to your CasparCG templates folder:
+The easiest way to install CasparCG is using the built-in installer:
 
 ```bash
-cp -r src/templates/* /path/to/casparcg/templates/
+# Install CasparCG (downloads ~105MB)
+./deploy.sh caspar-install
+
+# Start CasparCG
+./deploy.sh caspar-start
+
+# Check status
+./deploy.sh caspar-status
+
+# Stop CasparCG
+./deploy.sh caspar-stop
 ```
+
+This installs CasparCG to `~/.local/share/casparcg/` which:
+- Works on immutable Linux systems (Fedora Silverblue, Ubuntu Core, etc.)
+- Doesn't require root/sudo access
+- Automatically copies SLAP templates
+- Creates a default config for 1080p output
+
+**Supported distributions:**
+- Ubuntu 22.04 (Jammy) and derivatives
+- Ubuntu 24.04 (Noble) and derivatives
+- Other Debian-based systems (uses Noble packages)
+
+### Web-Based Control
+
+You can also control CasparCG from the SLAP web dashboard:
+1. Open http://localhost:9876
+2. Find the "CasparCG Server" card
+3. Use Start/Stop buttons to control the server
+4. Click "Connect" to link SLAP to CasparCG
+
+### Manual Installation
+
+If you prefer to install CasparCG manually or need a different version:
+
+1. Download from https://github.com/CasparCG/server/releases
+2. Extract to your preferred location
+3. Copy SLAP templates:
+   ```bash
+   cp -r src/templates/* /path/to/casparcg/templates/
+   ```
 
 ### Testing Templates
 

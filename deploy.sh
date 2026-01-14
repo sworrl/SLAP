@@ -4,14 +4,19 @@
 # Deploy/Update/Uninstall Script
 #
 # Usage:
-#   ./deploy.sh install    - Install SLAP and dependencies
-#   ./deploy.sh update     - Update SLAP (pull latest, reinstall deps)
-#   ./deploy.sh uninstall  - Remove SLAP installation
-#   ./deploy.sh start      - Start SLAP server
-#   ./deploy.sh stop       - Stop SLAP server
-#   ./deploy.sh status     - Check if SLAP is running
+#   ./deploy.sh install         - Install SLAP and dependencies
+#   ./deploy.sh update          - Update SLAP (pull latest, reinstall deps)
+#   ./deploy.sh uninstall       - Remove SLAP installation
+#   ./deploy.sh start           - Start SLAP server
+#   ./deploy.sh stop            - Stop SLAP server
+#   ./deploy.sh status          - Check if SLAP is running
+#   ./deploy.sh caspar-install  - Install CasparCG server
+#   ./deploy.sh caspar-start    - Start CasparCG server
+#   ./deploy.sh caspar-stop     - Stop CasparCG server
+#   ./deploy.sh caspar-status   - Check CasparCG status
 #
 # This script is idempotent - safe to run multiple times.
+# Works on immutable Linux systems (installs to ~/.local/)
 #
 
 set -e
@@ -23,6 +28,13 @@ VENV_DIR="$SRC_DIR/venv"
 PID_FILE="/tmp/slap.pid"
 LOG_FILE="/tmp/slap.log"
 DEFAULT_PORT=9876
+
+# CasparCG Configuration
+CASPAR_LOCAL_DIR="$HOME/.local/share/casparcg"
+CASPAR_BIN_DIR="$HOME/.local/bin"
+CASPAR_PID_FILE="/tmp/casparcg.pid"
+CASPAR_LOG_FILE="/tmp/casparcg.log"
+CASPAR_VERSION="2.5.0-stable"
 
 # Colors for output
 RED='\033[0;31m'
@@ -297,20 +309,401 @@ do_status() {
     return 1
 }
 
+# ============================================
+# CasparCG Functions
+# ============================================
+
+# Detect Ubuntu version for package selection
+get_ubuntu_codename() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$VERSION_CODENAME" in
+            jammy|kinetic|lunar)
+                echo "jammy"
+                ;;
+            noble|mantic|oracular|questing|*)
+                echo "noble"
+                ;;
+        esac
+    else
+        echo "noble"  # Default to noble
+    fi
+}
+
+# Find CasparCG binary
+find_casparcg() {
+    # Check common locations
+    if [ -x "$CASPAR_BIN_DIR/casparcg" ]; then
+        echo "$CASPAR_BIN_DIR/casparcg"
+    elif [ -x "$CASPAR_LOCAL_DIR/bin/casparcg" ]; then
+        echo "$CASPAR_LOCAL_DIR/bin/casparcg"
+    elif command -v casparcg &> /dev/null; then
+        command -v casparcg
+    elif [ -x "/usr/bin/casparcg" ]; then
+        echo "/usr/bin/casparcg"
+    elif [ -x "/opt/casparcg/bin/casparcg" ]; then
+        echo "/opt/casparcg/bin/casparcg"
+    else
+        echo ""
+    fi
+}
+
+# Check if CasparCG is installed
+caspar_detect() {
+    CASPAR_BIN=$(find_casparcg)
+    if [ -n "$CASPAR_BIN" ]; then
+        print_success "CasparCG found: $CASPAR_BIN"
+        if [ -x "$CASPAR_BIN" ]; then
+            VERSION=$("$CASPAR_BIN" --version 2>/dev/null | head -1 || echo "unknown")
+            print_status "Version: $VERSION"
+        fi
+        return 0
+    else
+        print_warning "CasparCG not found"
+        print_status "Install with: $0 caspar-install"
+        return 1
+    fi
+}
+
+# Install CasparCG
+caspar_install() {
+    print_status "Installing CasparCG..."
+    echo ""
+
+    # Check if already installed
+    CASPAR_BIN=$(find_casparcg)
+    if [ -n "$CASPAR_BIN" ]; then
+        print_success "CasparCG already installed: $CASPAR_BIN"
+        return 0
+    fi
+
+    # Detect Ubuntu version
+    CODENAME=$(get_ubuntu_codename)
+    print_status "Detected Ubuntu codename: $CODENAME"
+
+    # Create directories
+    mkdir -p "$CASPAR_LOCAL_DIR"
+    mkdir -p "$CASPAR_BIN_DIR"
+    mkdir -p "$CASPAR_LOCAL_DIR/templates"
+    mkdir -p "$CASPAR_LOCAL_DIR/media"
+
+    # Download URLs
+    SERVER_DEB="casparcg-server-2.5_2.5.0.stable-${CODENAME}1_amd64.deb"
+    if [ "$CODENAME" = "jammy" ]; then
+        SERVER_DEB="casparcg-server-2.5_2.5.0.stable-${CODENAME}_amd64.deb"
+    fi
+    CEF_DEB="casparcg-cef-142_142.0.17.g60aac24+2-${CODENAME}1_amd64.deb"
+
+    SERVER_URL="https://github.com/CasparCG/server/releases/download/v${CASPAR_VERSION}/${SERVER_DEB}"
+    CEF_URL="https://github.com/CasparCG/server/releases/download/v${CASPAR_VERSION}/${CEF_DEB}"
+
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+
+    # Check if we can use dpkg (normal system) or need manual extraction (immutable)
+    CAN_DPKG=false
+    if command -v dpkg &> /dev/null; then
+        # Test if we can write to /usr (not immutable)
+        if touch /usr/.test_write 2>/dev/null; then
+            rm -f /usr/.test_write
+            CAN_DPKG=true
+        fi
+    fi
+
+    if [ "$CAN_DPKG" = true ]; then
+        print_status "Installing via dpkg (system-wide)..."
+
+        # Download packages
+        print_status "Downloading CasparCG server..."
+        wget -q --show-progress -O server.deb "$SERVER_URL" || {
+            print_error "Failed to download CasparCG server"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        }
+
+        print_status "Downloading CasparCG CEF (HTML template support)..."
+        wget -q --show-progress -O cef.deb "$CEF_URL" || {
+            print_error "Failed to download CasparCG CEF"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        }
+
+        # Install packages
+        print_status "Installing packages (may require sudo)..."
+        sudo dpkg -i cef.deb server.deb || {
+            print_warning "Fixing dependencies..."
+            sudo apt-get install -f -y
+        }
+
+    else
+        print_status "Installing to user directory (immutable system compatible)..."
+
+        # Download packages
+        print_status "Downloading CasparCG server..."
+        wget -q --show-progress -O server.deb "$SERVER_URL" || {
+            print_error "Failed to download CasparCG server"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        }
+
+        print_status "Downloading CasparCG CEF (HTML template support)..."
+        wget -q --show-progress -O cef.deb "$CEF_URL" || {
+            print_error "Failed to download CasparCG CEF"
+            rm -rf "$TEMP_DIR"
+            exit 1
+        }
+
+        # Extract .deb files (they're ar archives)
+        print_status "Extracting packages..."
+
+        # Extract CEF first
+        mkdir -p cef_extract
+        cd cef_extract
+        ar x ../cef.deb
+        tar -xf data.tar.* 2>/dev/null || tar -xzf data.tar.* 2>/dev/null || tar -xJf data.tar.* 2>/dev/null
+        cp -r usr/lib/* "$CASPAR_LOCAL_DIR/lib/" 2>/dev/null || mkdir -p "$CASPAR_LOCAL_DIR/lib"
+        if [ -d usr/lib ]; then
+            cp -r usr/lib/* "$CASPAR_LOCAL_DIR/lib/"
+        fi
+        if [ -d usr/share ]; then
+            cp -r usr/share/* "$CASPAR_LOCAL_DIR/share/" 2>/dev/null || true
+        fi
+        cd ..
+
+        # Extract server
+        mkdir -p server_extract
+        cd server_extract
+        ar x ../server.deb
+        tar -xf data.tar.* 2>/dev/null || tar -xzf data.tar.* 2>/dev/null || tar -xJf data.tar.* 2>/dev/null
+        if [ -d usr/bin ]; then
+            cp -r usr/bin/* "$CASPAR_BIN_DIR/"
+        fi
+        if [ -d usr/lib ]; then
+            cp -r usr/lib/* "$CASPAR_LOCAL_DIR/lib/" 2>/dev/null || true
+        fi
+        if [ -d usr/share/casparcg ]; then
+            cp -r usr/share/casparcg/* "$CASPAR_LOCAL_DIR/"
+        fi
+        cd ..
+
+        # Create wrapper script that sets library path
+        cat > "$CASPAR_BIN_DIR/casparcg" << 'WRAPPER'
+#!/bin/bash
+CASPAR_DIR="$HOME/.local/share/casparcg"
+export LD_LIBRARY_PATH="$CASPAR_DIR/lib:$LD_LIBRARY_PATH"
+cd "$CASPAR_DIR"
+exec "$CASPAR_DIR/bin/casparcg-bin" "$@"
+WRAPPER
+        chmod +x "$CASPAR_BIN_DIR/casparcg"
+
+        # Move actual binary
+        if [ -f "$CASPAR_BIN_DIR/casparcg-bin" ]; then
+            mv "$CASPAR_BIN_DIR/casparcg-bin" "$CASPAR_LOCAL_DIR/bin/" 2>/dev/null || true
+        fi
+        mkdir -p "$CASPAR_LOCAL_DIR/bin"
+        if [ -f "$CASPAR_BIN_DIR/casparcg" ] && [ ! -f "$CASPAR_LOCAL_DIR/bin/casparcg-bin" ]; then
+            # The binary might have a different name
+            for bin in "$CASPAR_BIN_DIR"/casparcg*; do
+                if [ -x "$bin" ] && file "$bin" | grep -q "executable"; then
+                    cp "$bin" "$CASPAR_LOCAL_DIR/bin/casparcg-bin"
+                    break
+                fi
+            done
+        fi
+    fi
+
+    # Cleanup
+    cd /
+    rm -rf "$TEMP_DIR"
+
+    # Copy SLAP templates to CasparCG
+    if [ -d "$SRC_DIR/templates" ]; then
+        print_status "Installing SLAP templates..."
+        cp -r "$SRC_DIR/templates/"* "$CASPAR_LOCAL_DIR/templates/" 2>/dev/null || true
+    fi
+
+    # Create default config if needed
+    if [ ! -f "$CASPAR_LOCAL_DIR/casparcg.config" ]; then
+        print_status "Creating default CasparCG config..."
+        cat > "$CASPAR_LOCAL_DIR/casparcg.config" << 'CONFIG'
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <paths>
+        <media-path>media/</media-path>
+        <log-path>log/</log-path>
+        <data-path>data/</data-path>
+        <template-path>templates/</template-path>
+    </paths>
+    <channels>
+        <channel>
+            <video-mode>1080p5000</video-mode>
+            <consumers>
+                <screen>
+                    <device>1</device>
+                    <windowed>true</windowed>
+                </screen>
+            </consumers>
+        </channel>
+    </channels>
+    <controllers>
+        <tcp>
+            <port>5250</port>
+            <protocol>AMCP</protocol>
+        </tcp>
+    </controllers>
+</configuration>
+CONFIG
+    fi
+
+    # Verify installation
+    echo ""
+    CASPAR_BIN=$(find_casparcg)
+    if [ -n "$CASPAR_BIN" ]; then
+        print_success "========================================="
+        print_success "CasparCG installed successfully!"
+        print_success "========================================="
+        echo ""
+        print_status "Binary: $CASPAR_BIN"
+        print_status "Config: $CASPAR_LOCAL_DIR/casparcg.config"
+        print_status "Templates: $CASPAR_LOCAL_DIR/templates/"
+        echo ""
+        print_status "Start CasparCG with: $0 caspar-start"
+    else
+        print_error "CasparCG installation failed"
+        exit 1
+    fi
+}
+
+# Start CasparCG
+caspar_start() {
+    # Check if already running
+    if [ -f "$CASPAR_PID_FILE" ]; then
+        OLD_PID=$(cat "$CASPAR_PID_FILE")
+        if ps -p "$OLD_PID" > /dev/null 2>&1; then
+            print_warning "CasparCG is already running (PID: $OLD_PID)"
+            return 0
+        else
+            rm -f "$CASPAR_PID_FILE"
+        fi
+    fi
+
+    CASPAR_BIN=$(find_casparcg)
+    if [ -z "$CASPAR_BIN" ]; then
+        print_error "CasparCG not found. Install with: $0 caspar-install"
+        exit 1
+    fi
+
+    print_status "Starting CasparCG..."
+
+    # Determine working directory
+    if [ -d "$CASPAR_LOCAL_DIR" ]; then
+        WORK_DIR="$CASPAR_LOCAL_DIR"
+    else
+        WORK_DIR=$(dirname "$CASPAR_BIN")
+    fi
+
+    # Start CasparCG
+    cd "$WORK_DIR"
+    export LD_LIBRARY_PATH="$CASPAR_LOCAL_DIR/lib:$LD_LIBRARY_PATH"
+    nohup "$CASPAR_BIN" > "$CASPAR_LOG_FILE" 2>&1 &
+    echo $! > "$CASPAR_PID_FILE"
+
+    sleep 3
+
+    if ps -p $(cat "$CASPAR_PID_FILE") > /dev/null 2>&1; then
+        print_success "CasparCG started (PID: $(cat $CASPAR_PID_FILE))"
+        print_status "AMCP port: 5250"
+        print_status "Log: $CASPAR_LOG_FILE"
+    else
+        print_error "Failed to start CasparCG. Check log: $CASPAR_LOG_FILE"
+        tail -20 "$CASPAR_LOG_FILE" 2>/dev/null || true
+        exit 1
+    fi
+}
+
+# Stop CasparCG
+caspar_stop() {
+    if [ ! -f "$CASPAR_PID_FILE" ]; then
+        print_warning "CasparCG is not running (no PID file)"
+        return 0
+    fi
+
+    PID=$(cat "$CASPAR_PID_FILE")
+
+    if ps -p "$PID" > /dev/null 2>&1; then
+        print_status "Stopping CasparCG (PID: $PID)..."
+        kill "$PID" 2>/dev/null || true
+        sleep 2
+
+        # Force kill if still running
+        if ps -p "$PID" > /dev/null 2>&1; then
+            kill -9 "$PID" 2>/dev/null || true
+        fi
+
+        print_success "CasparCG stopped"
+    else
+        print_warning "CasparCG process not found (stale PID file)"
+    fi
+
+    rm -f "$CASPAR_PID_FILE"
+}
+
+# CasparCG status
+caspar_status() {
+    # Check if binary exists
+    CASPAR_BIN=$(find_casparcg)
+    if [ -z "$CASPAR_BIN" ]; then
+        print_warning "CasparCG not installed"
+        print_status "Install with: $0 caspar-install"
+        return 1
+    fi
+
+    print_status "CasparCG binary: $CASPAR_BIN"
+
+    # Check if running
+    if [ -f "$CASPAR_PID_FILE" ]; then
+        PID=$(cat "$CASPAR_PID_FILE")
+        if ps -p "$PID" > /dev/null 2>&1; then
+            print_success "CasparCG is running (PID: $PID)"
+
+            # Check if AMCP port is listening
+            if ss -tln | grep -q ":5250 "; then
+                print_status "AMCP listening on port 5250"
+            fi
+            return 0
+        fi
+    fi
+
+    # Also check by process name
+    CASPAR_PIDS=$(pgrep -f "casparcg" 2>/dev/null || true)
+    if [ -n "$CASPAR_PIDS" ]; then
+        print_success "CasparCG is running (PID: $CASPAR_PIDS)"
+        return 0
+    fi
+
+    print_warning "CasparCG is not running"
+    return 1
+}
+
 # Show help
 show_help() {
     echo "SLAP - Scoreboard Live Automation Platform"
     echo ""
     echo "Usage: $0 <command> [options]"
     echo ""
-    echo "Commands:"
-    echo "  install     Install SLAP and dependencies"
-    echo "  update      Update SLAP (reinstall dependencies)"
-    echo "  uninstall   Remove SLAP installation"
-    echo "  start       Start SLAP server"
-    echo "  stop        Stop SLAP server"
-    echo "  status      Check if SLAP is running"
-    echo "  help        Show this help message"
+    echo "SLAP Commands:"
+    echo "  install         Install SLAP and dependencies"
+    echo "  update          Update SLAP (reinstall dependencies)"
+    echo "  uninstall       Remove SLAP installation"
+    echo "  start           Start SLAP server"
+    echo "  stop            Stop SLAP server"
+    echo "  status          Check if SLAP is running"
+    echo ""
+    echo "CasparCG Commands:"
+    echo "  caspar-install  Install CasparCG server"
+    echo "  caspar-start    Start CasparCG server"
+    echo "  caspar-stop     Stop CasparCG server  "
+    echo "  caspar-status   Check CasparCG status"
     echo ""
     echo "Start options:"
     echo "  --port, -p <port>   Web server port (default: 9876)"
@@ -319,7 +712,8 @@ show_help() {
     echo ""
     echo "Examples:"
     echo "  $0 install"
-    echo "  $0 start --port 9876 --simulate"
+    echo "  $0 caspar-install"
+    echo "  $0 caspar-start && $0 start"
     echo "  $0 stop"
     echo ""
 }
@@ -343,6 +737,21 @@ case "${1:-help}" in
         ;;
     status)
         do_status
+        ;;
+    caspar-install)
+        caspar_install
+        ;;
+    caspar-start)
+        caspar_start
+        ;;
+    caspar-stop)
+        caspar_stop
+        ;;
+    caspar-status)
+        caspar_status
+        ;;
+    caspar-detect)
+        caspar_detect
         ;;
     help|--help|-h)
         show_help

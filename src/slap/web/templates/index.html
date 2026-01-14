@@ -544,6 +544,32 @@
                 </div>
             </div>
         </div>
+
+        <!-- CasparCG Server Control -->
+        <div class="card">
+            <h2>CasparCG Server</h2>
+            <div class="status-bar" style="margin-bottom: 15px;">
+                <div class="status-item">
+                    <div class="status-dot" id="casparInstalled"></div>
+                    <span class="status-label">Installed</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="casparRunning"></div>
+                    <span class="status-label">Running</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="casparAmcp"></div>
+                    <span class="status-label">AMCP</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-success" onclick="casparStart()" id="btnCasparStart">Start Server</button>
+                <button class="btn btn-danger" onclick="casparStop()" id="btnCasparStop">Stop Server</button>
+                <button class="btn btn-primary" onclick="casparConnect()" id="btnCasparConnect">Connect</button>
+                <button class="btn btn-secondary" onclick="casparRefresh()">Refresh</button>
+            </div>
+            <div id="casparInfo" style="margin-top: 10px; font-size: 0.85rem; color: #888;"></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
@@ -720,6 +746,93 @@
             currentMode = data.mode;
             updateModeUI();
         });
+
+        // CasparCG Server Control
+        let casparState = {
+            installed: false,
+            running: false,
+            amcp_listening: false,
+            connected: false,
+            binary: null
+        };
+
+        async function casparRefresh() {
+            try {
+                const status = await api('/caspar/status');
+                casparState = status;
+                updateCasparUI();
+            } catch (e) {
+                console.error('Failed to get CasparCG status:', e);
+            }
+        }
+
+        function updateCasparUI() {
+            updateStatus('casparInstalled', casparState.installed);
+            updateStatus('casparRunning', casparState.running);
+            updateStatus('casparAmcp', casparState.amcp_listening);
+
+            const info = document.getElementById('casparInfo');
+            if (casparState.installed) {
+                let text = `Binary: ${casparState.binary || 'found'}`;
+                if (casparState.running && casparState.pid) {
+                    text += ` | PID: ${casparState.pid}`;
+                }
+                if (casparState.amcp_listening) {
+                    text += ' | AMCP: port 5250';
+                }
+                info.textContent = text;
+            } else {
+                info.innerHTML = 'Not installed. Run: <code>./deploy.sh caspar-install</code>';
+            }
+
+            // Update button states
+            document.getElementById('btnCasparStart').disabled = !casparState.installed || casparState.running;
+            document.getElementById('btnCasparStop').disabled = !casparState.running;
+            document.getElementById('btnCasparConnect').disabled = !casparState.amcp_listening;
+        }
+
+        async function casparStart() {
+            document.getElementById('btnCasparStart').disabled = true;
+            document.getElementById('btnCasparStart').textContent = 'Starting...';
+            try {
+                await api('/caspar/start', 'POST');
+                // Wait for it to start
+                setTimeout(casparRefresh, 3000);
+            } catch (e) {
+                alert('Failed to start CasparCG: ' + e.message);
+            }
+            document.getElementById('btnCasparStart').textContent = 'Start Server';
+        }
+
+        async function casparStop() {
+            document.getElementById('btnCasparStop').disabled = true;
+            try {
+                await api('/caspar/stop', 'POST');
+                setTimeout(casparRefresh, 1000);
+            } catch (e) {
+                alert('Failed to stop CasparCG: ' + e.message);
+            }
+        }
+
+        async function casparConnect() {
+            document.getElementById('btnCasparConnect').disabled = true;
+            document.getElementById('btnCasparConnect').textContent = 'Connecting...';
+            try {
+                const result = await api('/caspar/connect', 'POST');
+                if (result.connected) {
+                    updateStatus('casparStatus', true);
+                }
+            } catch (e) {
+                alert('Failed to connect to CasparCG');
+            }
+            document.getElementById('btnCasparConnect').textContent = 'Connect';
+            casparRefresh();
+        }
+
+        // Initial CasparCG status check
+        casparRefresh();
+        // Refresh CasparCG status every 10 seconds
+        setInterval(casparRefresh, 10000);
     </script>
 </body>
 </html>
