@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Hockey Scorebug</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/scorebug.css">
+</head>
+<body>
+    <div class="ccg-ocr">
+        <div class="scorebug" id="scorebug">
+            <!-- League Logo -->
+            <div class="league-logo" id="leagueLogo">
+                <img src="Logos/league.png" alt="">
+            </div>
+            <div class="spacer"></div>
+
+            <!-- Game Time -->
+            <div class="game-time">
+                <div class="period"><p id="period" class="label">1ST</p></div>
+                <div class="spacer"></div>
+                <div class="gameclock"><p id="gameClock" class="value">20:00</p></div>
+            </div>
+            <div class="spacer"></div>
+
+            <!-- Home Team -->
+            <div class="team-one">
+                <div class="team-one-info">
+                    <div class="t1-logo" id="t1Logo"><img src="Logos/home.png" alt=""></div>
+                    <div class="spacer"></div>
+                    <div class="t1"><p id="t1Name" class="label">HOME</p></div>
+                    <div class="spacer"></div>
+                    <div class="t1-score"><p id="t1Score" class="value">0</p></div>
+                </div>
+                <div class="team-pp" id="team1-pp">
+                    <div class="team-power-play">POWER PLAY <span id="t1PP">2:00</span></div>
+                </div>
+            </div>
+            <div class="spacer"></div>
+
+            <!-- Away Team -->
+            <div class="team-two">
+                <div class="team-two-info">
+                    <div class="t2-score"><p id="t2Score" class="value">0</p></div>
+                    <div class="spacer"></div>
+                    <div class="t2"><p id="t2Name" class="label">AWAY</p></div>
+                    <div class="spacer"></div>
+                    <div class="t2-logo" id="t2Logo"><img src="Logos/away.png" alt=""></div>
+                </div>
+                <div class="team-pp" id="team2-pp">
+                    <div class="team-power-play">POWER PLAY <span id="t2PP">2:00</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/scorebug.js"></script>
+</body>
+</html>

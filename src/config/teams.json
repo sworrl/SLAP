@@ -1,0 +1,32 @@
+{
+  "teams": [
+    {
+      "id": "penguins",
+      "name": "Pittsburgh Penguins",
+      "short_name": "PIT",
+      "logo": "penguins.png",
+      "color": "#FCB514"
+    },
+    {
+      "id": "flyers",
+      "name": "Philadelphia Flyers",
+      "short_name": "PHI",
+      "logo": "flyers.png",
+      "color": "#F74902"
+    },
+    {
+      "id": "capitals",
+      "name": "Washington Capitals",
+      "short_name": "WSH",
+      "logo": "capitals.png",
+      "color": "#C8102E"
+    },
+    {
+      "id": "rangers",
+      "name": "New York Rangers",
+      "short_name": "NYR",
+      "logo": "rangers.png",
+      "color": "#0038A8"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+/* SLAP Hockey Scorebug Styles */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 500;
+    color: #fff;
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Animations */
+@keyframes intro {
+    0% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes outro {
+    0% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+@keyframes goalFlash {
+    0%, 100% { background-color: rgba(0, 0, 0, 0.9); }
+    25%, 75% { background-color: rgba(255, 215, 0, 0.9); }
+}
+
+/* Canvas */
+.ccg-ocr {
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Scorebug Container */
+.scorebug {
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    display: flex;
+    align-items: flex-start;
+    height: auto;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.scorebug.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.scorebug.intro {
+    animation: intro 0.5s ease-out forwards;
+}
+
+.scorebug.outro {
+    animation: outro 0.5s ease-out forwards;
+}
+
+/* Spacers */
+.spacer {
+    width: 2px;
+    height: 65px;
+    background: transparent;
+}
+
+/* League Logo */
+.league-logo {
+    width: 90px;
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.league-logo img {
+    max-width: 80px;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* Game Time Section */
+.game-time {
+    display: flex;
+    height: 65px;
+}
+
+.period {
+    width: 100px;
+    height: 65px;
+    background: linear-gradient(135deg, rgba(27, 110, 184, 0.95), rgba(0, 82, 156, 0.95));
+    border-radius: 10px 0 0 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.period .label {
+    font-size: 24px;
+}
+
+.gameclock {
+    width: 120px;
+    height: 65px;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gameclock .value {
+    font-size: 28px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Team Sections */
+.team-one, .team-two {
+    display: flex;
+    flex-direction: column;
+}
+
+.team-one-info, .team-two-info {
+    display: flex;
+    height: 65px;
+}
+
+/* Team Logos */
+.t1-logo, .t2-logo {
+    width: 90px;
+    height: 65px;
+    background: rgba(211, 211, 211, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s ease;
+}
+
+.t1-logo {
+    border-radius: 10px 0 0 10px;
+}
+
+.t2-logo {
+    border-radius: 0 10px 10px 0;
+}
+
+.t1-logo img, .t2-logo img {
+    max-width: 80px;
+    max-height: 60px;
+    object-fit: contain;
+}
+
+/* Power play state for logos */
+.t1-logo.pp, .t2-logo.pp {
+    background: rgba(255, 221, 0, 0.9);
+}
+
+/* Team Names */
+.t1, .t2 {
+    width: 175px;
+    height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.t1 {
+    background: linear-gradient(135deg, rgba(27, 110, 184, 0.95), rgba(0, 82, 156, 0.95));
+}
+
+.t2 {
+    background: linear-gradient(135deg, rgba(170, 0, 0, 0.95), rgba(120, 0, 0, 0.95));
+}
+
+.t1 .label, .t2 .label {
+    font-size: 22px;
+    transition: color 0.3s ease;
+}
+
+.t1 .label.pp {
+    color: rgba(255, 221, 0, 1);
+}
+
+/* Team Scores */
+.t1-score, .t2-score {
+    width: 100px;
+    height: 65px;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.t1-score {
+    border-radius: 0 10px 10px 0;
+}
+
+.t2-score {
+    border-radius: 10px 0 0 10px;
+}
+
+.t1-score .value, .t2-score .value {
+    font-size: 32px;
+}
+
+.t1-score.goal, .t2-score.goal {
+    animation: goalFlash 0.5s ease-in-out 3;
+}
+
+/* Power Play Dropdown */
+.team-pp {
+    background: linear-gradient(135deg, rgba(255, 221, 0, 0.95), rgba(255, 170, 0, 0.95));
+    margin: 0 30px;
+    border-radius: 0 0 10px 10px;
+    color: #000;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    display: grid;
+    grid-template-rows: 0fr;
+    overflow: hidden;
+    transition: grid-template-rows 0.4s ease-out, padding 0.4s ease-out;
+    visibility: hidden;
+}
+
+.team-pp.open {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    padding: 8px 10px;
+}
+
+.team-power-play {
+    min-height: 0;
+    overflow: hidden;
+}

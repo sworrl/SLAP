@@ -1,0 +1,39 @@
+{
+  "serial": {
+    "port": "/dev/ttyUSB0",
+    "baudrate": 9600,
+    "timeout": 0.1
+  },
+  "caspar": {
+    "host": "127.0.0.1",
+    "port": 5250,
+    "channel": 1,
+    "layer": 10,
+    "enabled": false
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8080,
+    "debug": true
+  },
+  "simulator": {
+    "enabled": true,
+    "period_seconds": 1200,
+    "goal_interval_min": 30,
+    "goal_interval_max": 90,
+    "speed_multiplier": 10.0
+  },
+  "home_team": {
+    "name": "HOME",
+    "short_name": "HOM",
+    "logo": "home.png",
+    "color": "#0055AA"
+  },
+  "away_team": {
+    "name": "AWAY",
+    "short_name": "AWY",
+    "logo": "away.png",
+    "color": "#AA0000"
+  },
+  "debug": true
+}

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLAP Scorebug Preview</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+
+        .scorebug-container {
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            display: flex;
+            align-items: flex-start;
+            gap: 0;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .scorebug {
+            display: flex;
+            height: 65px;
+            border-radius: 10px;
+            overflow: visible;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 65px;
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .spacer {
+            width: 2px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Period & Clock */
+        .period {
+            width: 80px;
+            background: linear-gradient(135deg, #0055aa, #003377);
+            border-radius: 10px 0 0 10px;
+            font-size: 22px;
+        }
+
+        .clock {
+            width: 100px;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 26px;
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+            letter-spacing: 0.02em;
+        }
+
+        .clock p {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+
+        /* Teams */
+        .team-section {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .team-info {
+            display: flex;
+            height: 65px;
+        }
+
+        .team-logo {
+            width: 65px;
+            background: rgba(211, 211, 211, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .team-logo.home {
+            border-radius: 0;
+        }
+
+        .team-logo.away {
+            border-radius: 0 10px 10px 0;
+        }
+
+        .team-name {
+            width: 140px;
+            font-size: 18px;
+            padding: 0 10px;
+        }
+
+        .team-name.home {
+            background: linear-gradient(135deg, #0055aa, #003377);
+        }
+
+        .team-name.away {
+            background: linear-gradient(135deg, #aa0000, #770000);
+        }
+
+        .team-score {
+            width: 70px;
+            background: rgba(0, 0, 0, 0.9);
+            font-size: 32px;
+            transition: background-color 0.2s ease;
+        }
+
+        .team-score p {
+            transition: transform 0.2s ease-out;
+        }
+
+        .team-score p.changing {
+            animation: scorePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes scorePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); color: #ffd700; }
+            100% { transform: scale(1); }
+        }
+
+        .team-score.home {
+            border-radius: 0;
+        }
+
+        .team-score.away {
+            border-radius: 0;
+        }
+
+        /* Power Play Dropdown */
+        .power-play {
+            position: absolute;
+            top: 65px;
+            left: 65px;
+            width: calc(140px + 70px);
+            background: linear-gradient(135deg, #ffdd00, #ffaa00);
+            color: #000;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            border-radius: 0 0 10px 10px;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            padding: 0 10px;
+        }
+
+        .power-play.active {
+            max-height: 40px;
+            padding: 8px 10px;
+        }
+
+        /* VS spacer */
+        .vs-spacer {
+            width: 30px;
+            background: rgba(40, 40, 40, 0.95);
+            font-size: 12px;
+            color: #666;
+        }
+
+        /* Hidden state */
+        .scorebug-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Smooth number animations */
+        .score-digit, .clock-digit {
+            display: inline-block;
+            transition: transform 0.15s ease-out, opacity 0.15s ease-out;
+        }
+
+        .score-digit.changing {
+            animation: scoreChange 0.3s ease-out;
+        }
+
+        @keyframes scoreChange {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.4); color: #ffd700; }
+            100% { transform: scale(1); }
+        }
+
+        .clock-container {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.02em;
+        }
+
+        /* Goal flash */
+        .team-score.goal-flash {
+            animation: goalPulse 0.5s ease-in-out 3;
+        }
+
+        @keyframes goalPulse {
+            0%, 100% { background: rgba(0, 0, 0, 0.9); }
+            50% { background: rgba(255, 215, 0, 0.9); }
+        }
+    </style>
+</head>
+<body>
+    <div class="scorebug-container" id="scorebug">
+        <div class="scorebug">
+            <!-- Period -->
+            <div class="section period" id="period">1ST</div>
+            <div class="spacer"></div>
+
+            <!-- Clock -->
+            <div class="section clock" id="clock">20:00</div>
+            <div class="spacer"></div>
+
+            <!-- Home Team -->
+            <div class="team-section">
+                <div class="team-info">
+                    <div class="section team-logo home">HOME</div>
+                    <div class="spacer"></div>
+                    <div class="section team-name home" id="homeName">HOME</div>
+                    <div class="spacer"></div>
+                    <div class="section team-score home" id="homeScore">0</div>
+                </div>
+                <div class="power-play" id="homePP">
+                    POWER PLAY <span id="homePPTime">2:00</span>
+                </div>
+            </div>
+
+            <div class="spacer"></div>
+
+            <!-- VS -->
+            <div class="section vs-spacer">VS</div>
+
+            <div class="spacer"></div>
+
+            <!-- Away Team -->
+            <div class="team-section">
+                <div class="team-info">
+                    <div class="section team-score away" id="awayScore">0</div>
+                    <div class="spacer"></div>
+                    <div class="section team-name away" id="awayName">AWAY</div>
+                    <div class="spacer"></div>
+                    <div class="section team-logo away">AWAY</div>
+                </div>
+                <div class="power-play" id="awayPP">
+                    POWER PLAY <span id="awayPPTime">2:00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // State tracking for animations
+        let currentState = {
+            home: 0,
+            away: 0,
+            period: "1",
+            clockSeconds: 1200,
+            targetClockSeconds: 1200,
+            home_penalties: [],
+            away_penalties: []
+        };
+
+        let lastUpdateTime = performance.now();
+        let clockRunning = true;
+
+        // Format period for display
+        function formatPeriod(period) {
+            if (period === "1") return "1ST";
+            if (period === "2") return "2ND";
+            if (period === "3") return "3RD";
+            if (period === "OT" || period === "4") return "OT";
+            if (period === "SO") return "SO";
+            return period.toUpperCase();
+        }
+
+        // Parse clock string to seconds
+        function parseClockToSeconds(clock) {
+            if (!clock) return 1200;
+            const parts = clock.split(':');
+            if (parts.length !== 2) return 1200;
+            return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        }
+
+        // Format seconds to MM:SS with smooth decimals
+        function formatClock(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Format seconds to MM:SS
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Animate score change
+        function animateScore(element, oldValue, newValue) {
+            if (oldValue === newValue) return;
+
+            element.textContent = newValue;
+            element.parentElement.classList.add('goal-flash');
+            element.classList.add('changing');
+
+            setTimeout(() => {
+                element.parentElement.classList.remove('goal-flash');
+                element.classList.remove('changing');
+            }, 1500);
+        }
+
+        // Main render loop for smooth animations
+        function render(timestamp) {
+            const deltaTime = (timestamp - lastUpdateTime) / 1000;
+            lastUpdateTime = timestamp;
+
+            // Smooth clock countdown (interpolate towards target)
+            if (clockRunning && currentState.clockSeconds > 0) {
+                // Smoothly approach target clock value
+                const diff = currentState.targetClockSeconds - currentState.clockSeconds;
+                if (Math.abs(diff) > 0.1) {
+                    // Lerp towards target
+                    currentState.clockSeconds += diff * Math.min(deltaTime * 5, 1);
+                } else {
+                    currentState.clockSeconds = currentState.targetClockSeconds;
+                }
+
+                // Also countdown in real-time (simulation runs at 10x, so we do 10x too)
+                currentState.clockSeconds = Math.max(0, currentState.clockSeconds - deltaTime * 10);
+                currentState.targetClockSeconds = Math.max(0, currentState.targetClockSeconds - deltaTime * 10);
+            }
+
+            // Update clock display
+            document.getElementById('clock').textContent = formatClock(currentState.clockSeconds);
+
+            requestAnimationFrame(render);
+        }
+
+        // Update display from data
+        function updateDisplay(data) {
+            const homeEl = document.getElementById('homeScore');
+            const awayEl = document.getElementById('awayScore');
+
+            // Animate scores if changed
+            const newHome = data.home || 0;
+            const newAway = data.away || 0;
+
+            if (newHome !== currentState.home) {
+                animateScore(homeEl, currentState.home, newHome);
+                currentState.home = newHome;
+            }
+
+            if (newAway !== currentState.away) {
+                animateScore(awayEl, currentState.away, newAway);
+                currentState.away = newAway;
+            }
+
+            // Period
+            document.getElementById('period').textContent = formatPeriod(data.period || "1");
+            currentState.period = data.period || "1";
+
+            // Update target clock (will smoothly animate to this value)
+            const newClockSeconds = parseClockToSeconds(data.clock);
+            currentState.targetClockSeconds = newClockSeconds;
+
+            // If clock jumped significantly, snap to it
+            if (Math.abs(currentState.clockSeconds - newClockSeconds) > 5) {
+                currentState.clockSeconds = newClockSeconds;
+            }
+
+            // Power play indicators
+            const homePens = data.home_penalties || [];
+            const awayPens = data.away_penalties || [];
+            currentState.home_penalties = homePens;
+            currentState.away_penalties = awayPens;
+
+            const homePP = document.getElementById('homePP');
+            const awayPP = document.getElementById('awayPP');
+
+            // Home has power play if away has more penalties
+            if (awayPens.length > homePens.length && awayPens.length > 0) {
+                homePP.classList.add('active');
+                document.getElementById('homePPTime').textContent = formatTime(awayPens[0]);
+            } else {
+                homePP.classList.remove('active');
+            }
+
+            // Away has power play if home has more penalties
+            if (homePens.length > awayPens.length && homePens.length > 0) {
+                awayPP.classList.add('active');
+                document.getElementById('awayPPTime').textContent = formatTime(homePens[0]);
+            } else {
+                awayPP.classList.remove('active');
+            }
+        }
+
+        // Function called from parent window
+        function updateFromParent(data) {
+            updateDisplay(data);
+        }
+
+        // WebSocket for standalone mode
+        const socket = io();
+        socket.on('connect', () => console.log('Scorebug connected'));
+        socket.on('state_update', (state) => {
+            if (state.game) {
+                updateDisplay(state.game);
+            }
+        });
+
+        // Start render loop
+        requestAnimationFrame(render);
+
+        // Initial state
+        updateDisplay({
+            home: 0,
+            away: 0,
+            period: "1",
+            clock: "20:00",
+            home_penalties: [],
+            away_penalties: []
+        });
+    </script>
+</body>
+</html>
