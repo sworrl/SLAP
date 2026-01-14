@@ -36,6 +36,9 @@ CASPAR_PID_FILE="/tmp/casparcg.pid"
 CASPAR_LOG_FILE="/tmp/casparcg.log"
 CASPAR_VERSION="2.5.0-stable"
 
+# OBS Configuration
+OBS_WEBSOCKET_PORT=4455
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -685,6 +688,131 @@ caspar_status() {
     return 1
 }
 
+# ============================================
+# OBS Functions
+# ============================================
+
+# Find OBS binary
+find_obs() {
+    # Check common locations
+    if command -v obs &> /dev/null; then
+        command -v obs
+    elif [ -x "/usr/bin/obs" ]; then
+        echo "/usr/bin/obs"
+    elif [ -x "/usr/bin/obs-studio" ]; then
+        echo "/usr/bin/obs-studio"
+    elif [ -x "/snap/bin/obs-studio" ]; then
+        echo "/snap/bin/obs-studio"
+    elif [ -x "/var/lib/flatpak/exports/bin/com.obsproject.Studio" ]; then
+        echo "/var/lib/flatpak/exports/bin/com.obsproject.Studio"
+    elif [ -x "$HOME/.local/share/flatpak/exports/bin/com.obsproject.Studio" ]; then
+        echo "$HOME/.local/share/flatpak/exports/bin/com.obsproject.Studio"
+    else
+        echo ""
+    fi
+}
+
+# Check if OBS is installed
+obs_detect() {
+    OBS_BIN=$(find_obs)
+    if [ -n "$OBS_BIN" ]; then
+        print_success "OBS found: $OBS_BIN"
+        return 0
+    else
+        print_warning "OBS not found"
+        print_status "Install OBS Studio from: https://obsproject.com/"
+        return 1
+    fi
+}
+
+# Start OBS
+obs_start() {
+    # Check if already running
+    OBS_PIDS=$(pgrep -f "obs" 2>/dev/null || true)
+    if [ -n "$OBS_PIDS" ]; then
+        print_warning "OBS is already running (PID: $OBS_PIDS)"
+        return 0
+    fi
+
+    OBS_BIN=$(find_obs)
+    if [ -z "$OBS_BIN" ]; then
+        print_error "OBS not found. Install from https://obsproject.com/"
+        exit 1
+    fi
+
+    print_status "Starting OBS..."
+    nohup "$OBS_BIN" > /tmp/obs.log 2>&1 &
+
+    sleep 3
+
+    OBS_PIDS=$(pgrep -f "obs" 2>/dev/null || true)
+    if [ -n "$OBS_PIDS" ]; then
+        print_success "OBS started (PID: $OBS_PIDS)"
+        print_status "WebSocket port: $OBS_WEBSOCKET_PORT"
+        echo ""
+        print_warning "IMPORTANT: Enable WebSocket in OBS:"
+        print_status "1. Go to Tools > WebSocket Server Settings"
+        print_status "2. Check 'Enable WebSocket server'"
+        print_status "3. Set port to $OBS_WEBSOCKET_PORT"
+        print_status "4. (Optional) Set a password"
+    else
+        print_error "Failed to start OBS. Check log: /tmp/obs.log"
+        exit 1
+    fi
+}
+
+# Stop OBS
+obs_stop() {
+    OBS_PIDS=$(pgrep -f "obs" 2>/dev/null || true)
+    if [ -z "$OBS_PIDS" ]; then
+        print_warning "OBS is not running"
+        return 0
+    fi
+
+    print_status "Stopping OBS (PID: $OBS_PIDS)..."
+    kill $OBS_PIDS 2>/dev/null || true
+    sleep 2
+
+    # Force kill if still running
+    OBS_PIDS=$(pgrep -f "obs" 2>/dev/null || true)
+    if [ -n "$OBS_PIDS" ]; then
+        kill -9 $OBS_PIDS 2>/dev/null || true
+    fi
+
+    print_success "OBS stopped"
+}
+
+# OBS status
+obs_status() {
+    # Check if binary exists
+    OBS_BIN=$(find_obs)
+    if [ -z "$OBS_BIN" ]; then
+        print_warning "OBS not installed"
+        print_status "Install from: https://obsproject.com/"
+        return 1
+    fi
+
+    print_status "OBS binary: $OBS_BIN"
+
+    # Check if running
+    OBS_PIDS=$(pgrep -f "obs" 2>/dev/null || true)
+    if [ -n "$OBS_PIDS" ]; then
+        print_success "OBS is running (PID: $OBS_PIDS)"
+
+        # Check if WebSocket port is listening
+        if ss -tln | grep -q ":$OBS_WEBSOCKET_PORT "; then
+            print_status "WebSocket listening on port $OBS_WEBSOCKET_PORT"
+        else
+            print_warning "WebSocket not listening on port $OBS_WEBSOCKET_PORT"
+            print_status "Enable in OBS: Tools > WebSocket Server Settings"
+        fi
+        return 0
+    fi
+
+    print_warning "OBS is not running"
+    return 1
+}
+
 # Show help
 show_help() {
     echo "SLAP - Scoreboard Live Automation Platform"
@@ -704,6 +832,11 @@ show_help() {
     echo "  caspar-start    Start CasparCG server"
     echo "  caspar-stop     Stop CasparCG server  "
     echo "  caspar-status   Check CasparCG status"
+    echo ""
+    echo "OBS Commands:"
+    echo "  obs-start       Start OBS Studio"
+    echo "  obs-stop        Stop OBS Studio"
+    echo "  obs-status      Check OBS status"
     echo ""
     echo "Start options:"
     echo "  --port, -p <port>   Web server port (default: 9876)"
@@ -752,6 +885,18 @@ case "${1:-help}" in
         ;;
     caspar-detect)
         caspar_detect
+        ;;
+    obs-start)
+        obs_start
+        ;;
+    obs-stop)
+        obs_stop
+        ;;
+    obs-status)
+        obs_status
+        ;;
+    obs-detect)
+        obs_detect
         ;;
     help|--help|-h)
         show_help

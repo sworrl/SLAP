@@ -20,6 +20,7 @@ socketio = SocketIO(cors_allowed_origins="*")
 # References to simulator and serial (set by main app)
 _simulator = None
 _caspar_client = None
+_obs_client = None
 _serial_port = None
 _serial_reader_active = False
 
@@ -37,6 +38,12 @@ def set_caspar_client(client):
     """Set the CasparCG client instance."""
     global _caspar_client
     _caspar_client = client
+
+
+def set_obs_client(client):
+    """Set the OBS client instance."""
+    global _obs_client
+    _obs_client = client
 
 
 def set_serial_port(port):
@@ -542,6 +549,300 @@ def create_app(config_path=None) -> Flask:
             _caspar_client.disconnect()
             state.caspar_connected = False
         return jsonify({"status": "ok", "connected": False})
+
+    # ============ OBS Control API ============
+
+    @app.route("/api/obs/status", methods=["GET"])
+    def obs_status():
+        """Get OBS status."""
+        import subprocess
+        import os
+
+        result = {
+            "installed": False,
+            "running": False,
+            "binary": None,
+            "websocket_port": 4455,
+            "websocket_listening": False,
+            "connected": _obs_client.connected if _obs_client else False,
+            "version": None,
+            "current_scene": None
+        }
+
+        # Check if installed
+        obs_paths = [
+            "/usr/bin/obs",
+            "/usr/bin/obs-studio",
+            "/snap/bin/obs-studio",
+            "/var/lib/flatpak/exports/bin/com.obsproject.Studio",
+            os.path.expanduser("~/.local/share/flatpak/exports/bin/com.obsproject.Studio")
+        ]
+
+        for path in obs_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                result["installed"] = True
+                result["binary"] = path
+                break
+
+        # Check if binary exists via which
+        if not result["installed"]:
+            try:
+                which_result = subprocess.run(["which", "obs"], capture_output=True, text=True)
+                if which_result.returncode == 0:
+                    result["installed"] = True
+                    result["binary"] = which_result.stdout.strip()
+            except:
+                pass
+
+        # Check if running
+        try:
+            pgrep = subprocess.run(["pgrep", "-f", "obs"], capture_output=True, text=True)
+            if pgrep.returncode == 0 and pgrep.stdout.strip():
+                result["running"] = True
+                result["pid"] = int(pgrep.stdout.strip().split()[0])
+        except:
+            pass
+
+        # Check if WebSocket port is listening
+        try:
+            ss = subprocess.run(["ss", "-tln"], capture_output=True, text=True)
+            if ":4455 " in ss.stdout:
+                result["websocket_listening"] = True
+        except:
+            pass
+
+        # Get OBS info if connected
+        if _obs_client and _obs_client.connected:
+            result["version"] = _obs_client.get_version()
+            result["current_scene"] = _obs_client.get_current_scene()
+
+        return jsonify(result)
+
+    @app.route("/api/obs/start", methods=["POST"])
+    def obs_start():
+        """Start OBS Studio."""
+        import subprocess
+        import os
+
+        # Check if already running
+        try:
+            pgrep = subprocess.run(["pgrep", "-f", "obs"], capture_output=True, text=True)
+            if pgrep.returncode == 0 and pgrep.stdout.strip():
+                pid = int(pgrep.stdout.strip().split()[0])
+                return jsonify({"status": "ok", "message": "OBS already running", "pid": pid})
+        except:
+            pass
+
+        # Find binary
+        obs_bin = None
+        obs_paths = [
+            "/usr/bin/obs",
+            "/usr/bin/obs-studio",
+            "/snap/bin/obs-studio",
+            "/var/lib/flatpak/exports/bin/com.obsproject.Studio",
+            os.path.expanduser("~/.local/share/flatpak/exports/bin/com.obsproject.Studio")
+        ]
+
+        for path in obs_paths:
+            if os.path.isfile(path) and os.access(path, os.X_OK):
+                obs_bin = path
+                break
+
+        if not obs_bin:
+            try:
+                which_result = subprocess.run(["which", "obs"], capture_output=True, text=True)
+                if which_result.returncode == 0:
+                    obs_bin = which_result.stdout.strip()
+            except:
+                pass
+
+        if not obs_bin:
+            return jsonify({"error": "OBS not installed"}), 404
+
+        # Start OBS
+        try:
+            with open("/tmp/obs.log", "w") as log:
+                process = subprocess.Popen(
+                    [obs_bin],
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True
+                )
+
+            # Wait briefly and check if running
+            import time
+            time.sleep(2)
+
+            try:
+                os.kill(process.pid, 0)
+                logger.info(f"OBS started with PID {process.pid}")
+                return jsonify({"status": "ok", "pid": process.pid})
+            except ProcessLookupError:
+                return jsonify({"error": "OBS failed to start", "log": "/tmp/obs.log"}), 500
+
+        except Exception as e:
+            logger.error(f"Failed to start OBS: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/obs/stop", methods=["POST"])
+    def obs_stop():
+        """Stop OBS Studio."""
+        import subprocess
+        import os
+        import signal
+
+        # Find OBS PIDs
+        try:
+            pgrep = subprocess.run(["pgrep", "-f", "obs"], capture_output=True, text=True)
+            if pgrep.returncode != 0 or not pgrep.stdout.strip():
+                return jsonify({"status": "ok", "message": "OBS not running"})
+
+            pids = [int(p) for p in pgrep.stdout.strip().split()]
+        except:
+            return jsonify({"status": "ok", "message": "OBS not running"})
+
+        # Stop the processes
+        for pid in pids:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except:
+                pass
+
+        import time
+        time.sleep(2)
+
+        # Force kill if still running
+        try:
+            pgrep = subprocess.run(["pgrep", "-f", "obs"], capture_output=True, text=True)
+            if pgrep.returncode == 0 and pgrep.stdout.strip():
+                for pid in [int(p) for p in pgrep.stdout.strip().split()]:
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except:
+                        pass
+        except:
+            pass
+
+        # Disconnect client
+        if _obs_client:
+            _obs_client.disconnect()
+
+        logger.info("OBS stopped")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/obs/connect", methods=["POST"])
+    def obs_connect():
+        """Connect to OBS WebSocket."""
+        global _obs_client
+
+        data = request.get_json() or {}
+        host = data.get("host", "localhost")
+        port = data.get("port", 4455)
+        password = data.get("password", "")
+
+        # Create client if needed
+        if _obs_client is None:
+            from ..output.obs import OBSClient
+            _obs_client = OBSClient(host=host, port=port, password=password)
+        else:
+            _obs_client.host = host
+            _obs_client.port = port
+            _obs_client.password = password
+
+        if _obs_client.connect():
+            return jsonify({
+                "status": "ok",
+                "connected": True,
+                "version": _obs_client.get_version(),
+                "current_scene": _obs_client.get_current_scene()
+            })
+        else:
+            return jsonify({
+                "status": "error",
+                "connected": False,
+                "error": "Connection failed. Check OBS WebSocket settings."
+            }), 503
+
+    @app.route("/api/obs/disconnect", methods=["POST"])
+    def obs_disconnect():
+        """Disconnect from OBS WebSocket."""
+        if _obs_client:
+            _obs_client.disconnect()
+        return jsonify({"status": "ok", "connected": False})
+
+    @app.route("/api/obs/scenes", methods=["GET"])
+    def obs_scenes():
+        """Get list of OBS scenes."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        scenes = _obs_client.get_scene_list()
+        current = _obs_client.get_current_scene()
+        return jsonify({
+            "scenes": scenes,
+            "current_scene": current
+        })
+
+    @app.route("/api/obs/sources", methods=["GET"])
+    def obs_sources():
+        """Get list of sources in current scene."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        scene = request.args.get("scene")
+        sources = _obs_client.get_source_list(scene)
+        return jsonify({"sources": sources, "scene": scene or _obs_client.get_current_scene()})
+
+    @app.route("/api/obs/setup-scorebug", methods=["POST"])
+    def obs_setup_scorebug():
+        """Set up SLAP scorebug overlay in OBS."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        data = request.get_json() or {}
+        slap_url = data.get("slap_url", f"http://localhost:{get_config().web.port}")
+
+        if _obs_client.setup_scorebug(slap_url):
+            return jsonify({
+                "status": "ok",
+                "message": "Scorebug overlay created in current scene",
+                "source_name": "SLAP Scorebug"
+            })
+        else:
+            return jsonify({"error": "Failed to create scorebug overlay"}), 500
+
+    @app.route("/api/obs/scorebug/show", methods=["POST"])
+    def obs_scorebug_show():
+        """Show the scorebug overlay in OBS."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        if _obs_client.set_source_visible("SLAP Scorebug", True):
+            return jsonify({"status": "ok", "visible": True})
+        else:
+            return jsonify({"error": "Failed to show scorebug"}), 500
+
+    @app.route("/api/obs/scorebug/hide", methods=["POST"])
+    def obs_scorebug_hide():
+        """Hide the scorebug overlay in OBS."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        if _obs_client.set_source_visible("SLAP Scorebug", False):
+            return jsonify({"status": "ok", "visible": False})
+        else:
+            return jsonify({"error": "Failed to hide scorebug"}), 500
+
+    @app.route("/api/obs/scorebug/refresh", methods=["POST"])
+    def obs_scorebug_refresh():
+        """Refresh the scorebug browser source."""
+        if not _obs_client or not _obs_client.connected:
+            return jsonify({"error": "Not connected to OBS"}), 503
+
+        if _obs_client.refresh_browser_source("SLAP Scorebug"):
+            return jsonify({"status": "ok"})
+        else:
+            return jsonify({"error": "Failed to refresh scorebug"}), 500
 
     # ============ WebSocket Events ============
 

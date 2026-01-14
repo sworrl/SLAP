@@ -13,5 +13,8 @@ python-socketio>=5.8.0
 gevent>=23.0.0
 gevent-websocket>=0.10.1
 
+# OBS WebSocket control (OBS 28+ with WebSocket v5)
+obsws-python>=1.6.0
+
 # Development/testing
 pytest>=7.0.0

@@ -570,6 +570,51 @@
             </div>
             <div id="casparInfo" style="margin-top: 10px; font-size: 0.85rem; color: #888;"></div>
         </div>
+
+        <!-- OBS Studio Control -->
+        <div class="card">
+            <h2>OBS Studio</h2>
+            <div class="status-bar" style="margin-bottom: 15px;">
+                <div class="status-item">
+                    <div class="status-dot" id="obsInstalled"></div>
+                    <span class="status-label">Installed</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="obsRunning"></div>
+                    <span class="status-label">Running</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="obsWebsocket"></div>
+                    <span class="status-label">WebSocket</span>
+                </div>
+                <div class="status-item">
+                    <div class="status-dot" id="obsConnected"></div>
+                    <span class="status-label">Connected</span>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-success" onclick="obsStart()" id="btnObsStart">Start OBS</button>
+                <button class="btn btn-danger" onclick="obsStop()" id="btnObsStop">Stop OBS</button>
+                <button class="btn btn-primary" onclick="obsConnect()" id="btnObsConnect">Connect</button>
+                <button class="btn btn-secondary" onclick="obsRefresh()">Refresh</button>
+            </div>
+            <div id="obsInfo" style="margin-top: 10px; font-size: 0.85rem; color: #888;"></div>
+        </div>
+
+        <!-- OBS Scorebug Setup -->
+        <div class="card" id="obsScorebuCard" style="display: none;">
+            <h2>OBS Scorebug Overlay</h2>
+            <p style="color: #888; font-size: 0.9rem; margin-bottom: 15px;">
+                Add the SLAP scorebug as a browser source in your current OBS scene.
+            </p>
+            <div class="controls">
+                <button class="btn btn-primary" onclick="obsSetupScoreBug()">Add Scorebug to Scene</button>
+                <button class="btn btn-success" onclick="obsShowScoreBug()">Show</button>
+                <button class="btn btn-danger" onclick="obsHideScoreBug()">Hide</button>
+                <button class="btn btn-secondary" onclick="obsRefreshScoreBug()">Refresh</button>
+            </div>
+            <div id="obsSceneInfo" style="margin-top: 10px; font-size: 0.85rem; color: #888;"></div>
+        </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
@@ -833,6 +878,154 @@
         casparRefresh();
         // Refresh CasparCG status every 10 seconds
         setInterval(casparRefresh, 10000);
+
+        // OBS Studio Control
+        let obsState = {
+            installed: false,
+            running: false,
+            websocket_listening: false,
+            connected: false,
+            binary: null,
+            version: null,
+            current_scene: null
+        };
+
+        async function obsRefresh() {
+            try {
+                const status = await api('/obs/status');
+                obsState = status;
+                updateObsUI();
+            } catch (e) {
+                console.error('Failed to get OBS status:', e);
+            }
+        }
+
+        function updateObsUI() {
+            updateStatus('obsInstalled', obsState.installed);
+            updateStatus('obsRunning', obsState.running);
+            updateStatus('obsWebsocket', obsState.websocket_listening);
+            updateStatus('obsConnected', obsState.connected);
+
+            const info = document.getElementById('obsInfo');
+            const scorebugCard = document.getElementById('obsScorebuCard');
+            const sceneInfo = document.getElementById('obsSceneInfo');
+
+            if (obsState.installed) {
+                let text = `Binary: ${obsState.binary || 'found'}`;
+                if (obsState.running && obsState.pid) {
+                    text += ` | PID: ${obsState.pid}`;
+                }
+                if (obsState.connected && obsState.current_scene) {
+                    text += ` | Scene: ${obsState.current_scene}`;
+                }
+                info.textContent = text;
+
+                // Show WebSocket setup instructions if not listening
+                if (obsState.running && !obsState.websocket_listening) {
+                    info.innerHTML = text + '<br><span style="color: #ffc107;">Enable WebSocket: Tools &gt; WebSocket Server Settings</span>';
+                }
+            } else {
+                info.innerHTML = 'Not installed. Download from <a href="https://obsproject.com/" target="_blank" style="color: #00d4ff;">obsproject.com</a>';
+            }
+
+            // Show scorebug card if connected
+            if (obsState.connected) {
+                scorebugCard.style.display = 'block';
+                sceneInfo.textContent = `Current scene: ${obsState.current_scene || 'unknown'}`;
+            } else {
+                scorebugCard.style.display = 'none';
+            }
+
+            // Update button states
+            document.getElementById('btnObsStart').disabled = !obsState.installed || obsState.running;
+            document.getElementById('btnObsStop').disabled = !obsState.running;
+            document.getElementById('btnObsConnect').disabled = !obsState.websocket_listening || obsState.connected;
+        }
+
+        async function obsStart() {
+            document.getElementById('btnObsStart').disabled = true;
+            document.getElementById('btnObsStart').textContent = 'Starting...';
+            try {
+                await api('/obs/start', 'POST');
+                setTimeout(obsRefresh, 3000);
+            } catch (e) {
+                alert('Failed to start OBS: ' + e.message);
+            }
+            document.getElementById('btnObsStart').textContent = 'Start OBS';
+        }
+
+        async function obsStop() {
+            document.getElementById('btnObsStop').disabled = true;
+            try {
+                await api('/obs/stop', 'POST');
+                setTimeout(obsRefresh, 1000);
+            } catch (e) {
+                alert('Failed to stop OBS: ' + e.message);
+            }
+        }
+
+        async function obsConnect() {
+            document.getElementById('btnObsConnect').disabled = true;
+            document.getElementById('btnObsConnect').textContent = 'Connecting...';
+            try {
+                const result = await api('/obs/connect', 'POST');
+                if (result.connected) {
+                    obsState.connected = true;
+                    obsState.current_scene = result.current_scene;
+                    obsState.version = result.version;
+                    updateObsUI();
+                } else {
+                    alert('Failed to connect: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to connect to OBS WebSocket. Make sure it\'s enabled in OBS.');
+            }
+            document.getElementById('btnObsConnect').textContent = 'Connect';
+            obsRefresh();
+        }
+
+        async function obsSetupScoreBug() {
+            try {
+                const result = await api('/obs/setup-scorebug', 'POST');
+                if (result.status === 'ok') {
+                    alert('Scorebug overlay added to scene: ' + result.source_name);
+                    obsRefresh();
+                } else {
+                    alert('Failed to add scorebug: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to add scorebug overlay');
+            }
+        }
+
+        async function obsShowScoreBug() {
+            try {
+                await api('/obs/scorebug/show', 'POST');
+            } catch (e) {
+                alert('Failed to show scorebug');
+            }
+        }
+
+        async function obsHideScoreBug() {
+            try {
+                await api('/obs/scorebug/hide', 'POST');
+            } catch (e) {
+                alert('Failed to hide scorebug');
+            }
+        }
+
+        async function obsRefreshScoreBug() {
+            try {
+                await api('/obs/scorebug/refresh', 'POST');
+            } catch (e) {
+                alert('Failed to refresh scorebug');
+            }
+        }
+
+        // Initial OBS status check
+        obsRefresh();
+        // Refresh OBS status every 10 seconds
+        setInterval(obsRefresh, 10000);
     </script>
 </body>
 </html>
