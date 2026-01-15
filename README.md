@@ -174,8 +174,9 @@ OBS Machine (powerful workstation):
 # Make deploy script executable (first time only)
 chmod +x deploy.py
 
-# Install
+# Install with HTTPS (recommended)
 ./deploy.py install
+./deploy.py https setup
 
 # Start in demo mode (fake game data for testing)
 ./deploy.py start --simulate
@@ -184,10 +185,12 @@ chmod +x deploy.py
 ./deploy.py start
 
 # Open in browser
-# http://localhost:9876
+# https://slap.localhost
 ```
 
 > **Note:** The deploy script includes a shebang (`#!/usr/bin/env python3`) so you can run it directly with `./deploy.py` instead of `python deploy.py`. Both work.
+
+> **HTTPS:** After running `./deploy.py https setup`, SLAP is accessible at `https://slap.localhost` with a self-signed SSL certificate. The setup configures nginx as a reverse proxy and adds the hostname to `/etc/hosts`.
 
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
@@ -263,14 +266,14 @@ chmod +x deploy.py
 Add overlays as HTML templates:
 
 ```
-PLAY 1-10 [HTML] "http://localhost:5000/overlay"
-PLAY 1-11 [HTML] "http://localhost:5000/overlay/goal"
+PLAY 1-10 [HTML] "https://slap.localhost/overlay"
+PLAY 1-11 [HTML] "https://slap.localhost/overlay/goal"
 ```
 
 ### Using with OBS
 
 Add as Browser Source:
-- **URL:** `http://localhost:5000/overlay`
+- **URL:** `https://slap.localhost/overlay` (or `http://localhost:9876/overlay`)
 - **Width:** 1920
 - **Height:** 1080
 - **Custom CSS:** (leave empty)
@@ -319,6 +322,16 @@ The deploy script handles:
 | `./deploy.py logs` | Show logs (`-f` to follow) |
 | `./deploy.py update` | Update/reinstall dependencies |
 | `./deploy.py uninstall` | Remove installation |
+
+#### HTTPS Commands
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.py https setup` | Configure HTTPS with nginx and SSL certificate |
+| `./deploy.py https remove` | Remove HTTPS configuration |
+| `./deploy.py https status` | Check HTTPS setup status |
+
+> **Note:** HTTPS setup requires nginx and sudo privileges. The deploy script can be run as root, with sudo, or as a standard user (will prompt for sudo when needed).
 
 #### Start Options
 
@@ -442,7 +455,7 @@ SLAP stores game history, events, and player statistics in a SQLite database. Th
 
 ## 🖥️ Web Dashboard
 
-> The dashboard at `http://localhost:9876` provides **full control** over SLAP.
+> The dashboard at `https://slap.localhost` (or `http://localhost:9876` without HTTPS) provides **full control** over SLAP.
 
 ### 🎮 Game Control
 
@@ -486,7 +499,7 @@ SLAP stores game history, events, and player statistics in a SQLite database. Th
 ## 🔌 API Reference
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Base%20URL-localhost:9876/api-blue?style=for-the-badge" alt="Base URL">
+  <img src="https://img.shields.io/badge/Base%20URL-slap.localhost/api-blue?style=for-the-badge" alt="Base URL">
 </p>
 
 ### REST API
@@ -609,7 +622,7 @@ SLAP stores game history, events, and player statistics in a SQLite database. Th
 SLAP uses Socket.IO for real-time updates.
 
 ```javascript
-const socket = io('http://localhost:9876');
+const socket = io('https://slap.localhost');
 
 // Listen for state updates
 socket.on('state_update', (state) => {
@@ -635,25 +648,25 @@ socket.emit('update_period', { period: "3" });
 
 ```bash
 # Get current state
-curl http://localhost:9876/api/state
+curl https://slap.localhost/api/state
 
 # Trigger home goal
-curl -X POST http://localhost:9876/api/goal \
+curl -X POST https://slap.localhost/api/goal \
   -H "Content-Type: application/json" \
   -d '{"side": "HOME"}'
 
 # Set score manually
-curl -X POST http://localhost:9876/api/state \
+curl -X POST https://slap.localhost/api/state \
   -H "Content-Type: application/json" \
   -d '{"home": 3, "away": 1}'
 
 # Add 2-minute penalty to away team
-curl -X POST http://localhost:9876/api/penalty \
+curl -X POST https://slap.localhost/api/penalty \
   -H "Content-Type: application/json" \
   -d '{"side": "AWAY", "duration": 120}'
 
 # Show player card
-curl -X POST http://localhost:9876/api/overlay/player \
+curl -X POST https://slap.localhost/api/overlay/player \
   -H "Content-Type: application/json" \
   -d '{"team": "home", "number": "87", "name": "CROSBY", "duration": 5000}'
 ```
@@ -663,7 +676,7 @@ curl -X POST http://localhost:9876/api/overlay/player \
 ```python
 import requests
 
-BASE_URL = "http://localhost:9876/api"
+BASE_URL = "https://slap.localhost/api"
 
 # Get state
 state = requests.get(f"{BASE_URL}/state").json()
