@@ -149,6 +149,39 @@ def install_deps():
 
     print_success("Dependencies installed")
 
+def get_data_dir():
+    """Get platform-appropriate data directory for SLAP."""
+    if sys.platform == "win32":
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support"
+    else:
+        # Linux/Unix - follow XDG spec
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return base / "slap"
+
+def init_data_dir():
+    """Initialize SLAP data directory and database."""
+    data_dir = get_data_dir()
+
+    print_status(f"Initializing data directory: {data_dir}")
+
+    # Create data directory
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    # Initialize database by importing the module
+    try:
+        # Add src to path temporarily
+        sys.path.insert(0, str(SRC_DIR))
+        from slap.db import get_db
+        db = get_db()
+        print_success(f"Database initialized: {db.db_path}")
+    except Exception as e:
+        print_warning(f"Database will be created on first run: {e}")
+    finally:
+        if str(SRC_DIR) in sys.path:
+            sys.path.remove(str(SRC_DIR))
+
 def do_install():
     """Install SLAP"""
     print_status("Installing SLAP...")
@@ -157,11 +190,14 @@ def do_install():
     check_python()
     create_venv()
     install_deps()
+    init_data_dir()
 
     print()
     print_success("=========================================")
     print_success("SLAP installed successfully!")
     print_success("=========================================")
+    print()
+    print_status(f"Data directory: {get_data_dir()}")
     print()
     print_status("To start SLAP:")
     print_status(f"  {sys.argv[0]} start")

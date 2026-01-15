@@ -56,6 +56,7 @@
   - [Config File](#config-file)
   - [Serial Settings](#serial-settings)
   - [CasparCG Settings](#casparcg-settings)
+  - [Database Location](#database-location)
 - [🖥️ Web Dashboard](#️-web-dashboard)
   - [Game Control](#game-control)
   - [Broadcast Overlays Control](#broadcast-overlays-control)
@@ -198,30 +199,35 @@ chmod +x deploy.py
 <tr>
 <td>
 
-### 🟢 Core Features (Tested)
-| Feature | Description |
-|---------|-------------|
-| 🖥️ **Web Dashboard** | Control panel with live scorebug preview |
-| 🎮 **Simulation Mode** | Full game simulation for testing |
-| 📦 **Local Dependencies** | All JavaScript libraries hosted locally (no CDN) |
+### 🟢 Implemented Features
+| Feature | Description | Status |
+|---------|-------------|--------|
+| 📡 **MP-70 Serial Parser** | Binary protocol decoder for RS-232 scoreboard data | ✅ Complete |
+| 🎬 **CasparCG AMCP Client** | Full AMCP protocol over TCP sockets | ✅ Complete |
+| 📺 **OBS WebSocket Client** | Scene/source control via obs-websocket | ✅ Complete |
+| 🖥️ **Web Dashboard** | Control panel with live scorebug preview | ✅ Complete |
+| 🎮 **Game Simulator** | Fake serial with realistic game simulation | ✅ Complete |
+| 🏒 **11 Broadcast Overlays** | Goal, shots, penalty, player, period, intro, goalie, powerplay, stars, replay, ticker | ✅ Complete |
+| 👥 **Team Roster Manager** | CRUD API for player names/numbers/stats | ✅ Complete |
+| 🎨 **Team Customization** | Logos, colors, names via web UI | ✅ Complete |
+| ⚡ **Serial Port Config** | Hot-swap serial settings via web UI | ✅ Complete |
+| 🔄 **Preview/Live Modes** | Test without hardware, switch when ready | ✅ Complete |
+| 📦 **Local Dependencies** | All JS libraries hosted locally (no CDN) | ✅ Complete |
+| 🔌 **REST API** | 75+ endpoints for full control | ✅ Complete |
+| 💾 **SQLite Database** | Game history, events, player stats persistence | ✅ Complete |
+| 📊 **Statistics Tracking** | Goals, assists, PIM, season leaders | ✅ Complete |
 
 </td>
 </tr>
 <tr>
 <td>
 
-### 🟡 Extended Features (Implemented, Untested)
-| Feature | Description |
-|---------|-------------|
-| 📡 **Real-time Capture** | Reads data from MP-70 controllers via RS-232 serial |
-| 🎨 **Team Customization** | Logos, colors, and names configurable via web UI |
-| ⚡ **Serial Configuration** | Hot-swap serial settings via web UI |
-| 🔄 **Preview/Live Modes** | Test without hardware, switch to live when ready |
-| 🎬 **CasparCG Integration** | Sends live updates to broadcast graphics server |
-| 📺 **OBS Studio Integration** | WebSocket control for streaming/recording |
-| 🏒 **NHL-style Overlays** | Full suite of 12+ professional broadcast graphics |
-| 👥 **Team Roster Manager** | Store player names/numbers for quick overlay insertion |
-| 🎛️ **Stream Deck Support** | REST API designed for hardware control surfaces |
+### 🟡 Needs Field Testing
+> All features above are code-complete but need real-world testing with actual hardware:
+> - MP-70 controller integration
+> - CasparCG server connection
+> - OBS Studio connection
+> - Production broadcast environment
 
 </td>
 </tr>
@@ -417,6 +423,19 @@ Edit `src/config/default.json`:
 | `port` | AMCP port (default: 5250) |
 | `enabled` | Set to `false` to disable CasparCG |
 
+### Database Location
+
+SLAP stores game history, events, and player statistics in a SQLite database. The database is stored outside the source directory for security:
+
+| Platform | Location |
+|----------|----------|
+| **Linux** | `~/.local/share/slap/slap.db` |
+| **macOS** | `~/Library/Application Support/slap/slap.db` |
+| **Windows** | `%LOCALAPPDATA%\slap\slap.db` |
+
+> [!NOTE]
+> The database is automatically created during `./deploy.py install` and includes **self-healing** - if the database becomes corrupted, SLAP will back it up and create a fresh one automatically.
+
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
@@ -534,6 +553,32 @@ Edit `src/config/default.json`:
 | `POST` | `/api/simulator/start` | Start simulator |
 | `POST` | `/api/simulator/stop` | Stop simulator |
 | `POST` | `/api/simulator/reset` | Reset simulator |
+
+#### Game History Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/games` | Get recent games (add `?limit=N`) |
+| `POST` | `/api/games` | Create new game |
+| `GET` | `/api/games/current` | Get current in-progress game |
+| `GET` | `/api/games/{id}` | Get specific game |
+| `PUT` | `/api/games/{id}` | Update game details |
+| `DELETE` | `/api/games/{id}` | Delete game |
+| `POST` | `/api/games/{id}/end` | End game (status: final/cancelled) |
+| `GET` | `/api/games/{id}/summary` | Get full game summary with events |
+| `GET` | `/api/games/{id}/events` | Get game events (add `?type=goal`) |
+| `POST` | `/api/games/{id}/goal` | Log a goal |
+| `POST` | `/api/games/{id}/penalty` | Log a penalty |
+| `POST` | `/api/games/{id}/shot` | Log a shot |
+
+#### Statistics Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/stats` | Get player stats (add `?season=YYYY&team=X`) |
+| `GET` | `/api/stats/leaders` | Get stat leaders (add `?stat=points&limit=N`) |
+| `GET` | `/api/stats/team/{team}` | Get team win/loss record |
+| `GET` | `/api/stats/h2h` | Head-to-head record (add `?team1=X&team2=Y`) |
 
 #### Response Format
 
@@ -946,80 +991,103 @@ sudo usermod -a -G dialout $USER
 
 ## 📋 Development TODO
 
+### ✅ Code Complete (Needs Field Testing)
+
+<img src="https://img.shields.io/badge/24_Features-Code%20Complete-success?style=flat-square" alt="24 Complete">
+
 <table>
-<tr>
-<td width="50%">
+<tr><td>
 
-### ✅ Completed & Tested
-<img src="https://img.shields.io/badge/3_Features-Production%20Ready-success?style=flat-square" alt="3 Tested">
+**Core Systems**
+- [x] MP-70 binary protocol parser (200+ lines)
+- [x] CasparCG AMCP client (205 lines)
+- [x] OBS WebSocket client (363 lines)
+- [x] Thread-safe game state management
+- [x] Hockey logic engine (goal/period detection)
+- [x] Game simulator with realistic data
+- [x] Configuration management (JSON + env vars)
+- [x] SQLite database (game history, stats)
 
-- [x] Web dashboard with live preview
-- [x] Local JavaScript hosting (no CDN)
-- [x] Simulation mode
+</td><td>
 
-</td>
-<td width="50%">
+**Web & API**
+- [x] Flask/SocketIO web application
+- [x] 75+ REST API endpoints
+- [x] Real-time WebSocket updates
+- [x] Team roster CRUD API
+- [x] Serial port configuration API
+- [x] CasparCG/OBS control API
+- [x] Game history & events API
+- [x] Player statistics API
 
-### 🟡 Completed (Needs Testing)
-<img src="https://img.shields.io/badge/19_Features-Awaiting%20Testing-yellow?style=flat-square" alt="19 Untested">
+</td><td>
 
-- [x] Core scorebug template with animations
-- [x] RS-232 serial parser for MP-70
-- [x] Team customization (logos, colors, names)
-- [x] Serial port configuration via web UI
-- [x] Preview/Live mode switching
-- [x] CasparCG AMCP client integration
-- [x] OBS WebSocket integration
-- [x] Goal Splash overlay
-- [x] Shot Counter overlay
-- [x] Penalty Box overlay
-- [x] Player Card (lower third)
-- [x] Period Summary overlay
-- [x] Game Intro overlay
-- [x] Goalie Stats overlay
-- [x] Power Play enhanced graphic
-- [x] Three Stars overlay
-- [x] Replay Bug
-- [x] Ticker/Crawl
-- [x] Broadcast overlay controls in Web UI
-- [x] Team roster manager
+**Overlays (11 templates)**
+- [x] Scorebug (main)
+- [x] Goal splash with particles
+- [x] Shot counter
+- [x] Penalty box
+- [x] Player card
+- [x] Period summary
+- [x] Game intro
+- [x] Goalie stats
+- [x] Power play
+- [x] Three stars
+- [x] Replay bug
+- [x] Ticker/crawl
 
-</td>
-</tr>
+</td></tr>
 </table>
-
-### 🔄 In Progress
-
-| Feature | Status |
-|---------|--------|
-| Player headshot image support | 🚧 |
-| Roster import from CSV/Excel | 🚧 |
 
 ### 🗺️ Roadmap
 
 <details>
-<summary><strong>Planned Features</strong></summary>
+<summary><strong>🔊 Audio & Media (Not Implemented)</strong></summary>
 
-- [ ] Multi-game ticker with live scores API
-- [ ] Intermission countdown clock
-- [ ] Video replay integration
-- [ ] Custom animation editor
-- [ ] Mobile companion app for operators
-- [ ] Multi-language support
-- [ ] Audio cue triggers
-- [ ] Stat tracking (saves, hits, shots by player)
-- [ ] Historical game data export
-- [ ] CasparCG template hot-reload
-- [ ] OBS scene auto-switching
+- [ ] Goal horn audio playback
+- [ ] Siren/buzzer sound effects
+- [ ] PA announcement integration
+- [ ] Video replay control (NDI/RTMP switching)
+
+</details>
+
+<details>
+<summary><strong>💾 Data & Storage (Partially Implemented)</strong></summary>
+
+- [x] SQLite database backend ✅
+- [x] Game history & archive ✅
+- [x] Season player statistics ✅
+- [ ] Roster import from CSV/Excel
+- [ ] Historical game data CSV export
+- [ ] Career statistics (multi-season)
+
+</details>
+
+<details>
+<summary><strong>🔐 Security & Multi-user (Not Implemented)</strong></summary>
+
+- [ ] User authentication system
+- [ ] Role-based permissions
+- [ ] API key management
+
+</details>
+
+<details>
+<summary><strong>📱 Extended Interfaces (Not Implemented)</strong></summary>
+
+- [ ] Mobile companion app
+- [ ] Stream Deck native plugin
+- [ ] Discord/Slack notifications
+- [ ] Multi-game tournament mode
 
 </details>
 
 <details>
 <summary><strong>🔌 Future Hardware Support</strong></summary>
 
-- [ ] Daktronics All Sport 5000 support
-- [ ] OES scoreboard support
-- [ ] Generic scoreboard protocol adapters
+- [ ] Daktronics All Sport 5000
+- [ ] OES scoreboard protocol
+- [ ] Generic protocol adapters
 
 </details>
 

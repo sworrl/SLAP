@@ -965,6 +965,54 @@
                 <button class="btn btn-warning" onclick="resetRosterStats()">Reset Game Stats</button>
             </div>
         </div>
+
+        <!-- Game History & Statistics -->
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Game History & Statistics</h2>
+            <p style="color: #888; font-size: 0.9rem; margin-bottom: 15px;">
+                Track game history, player stats, and scoring leaders. Data persists across sessions.
+            </p>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- Game Management -->
+                <div style="background: #1a1a1a; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px; font-size: 1.1rem;">Current Game</h3>
+                    <div id="currentGameInfo" style="margin-bottom: 15px; padding: 10px; background: #252525; border-radius: 4px;">
+                        <p style="color: #888;">No active game</p>
+                    </div>
+                    <div class="controls" style="gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-sm btn-primary" onclick="startNewGame()">New Game</button>
+                        <button class="btn btn-sm btn-success" onclick="endCurrentGame('final')">End Game</button>
+                        <button class="btn btn-sm btn-warning" onclick="endCurrentGame('cancelled')">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- Stat Leaders -->
+                <div style="background: #1a1a1a; padding: 15px; border-radius: 8px;">
+                    <h3 style="color: #00d4ff; margin-bottom: 15px; font-size: 1.1rem;">Season Leaders</h3>
+                    <div id="statLeaders" style="max-height: 200px; overflow-y: auto;">
+                        <p style="color: #888;">No stats yet</p>
+                    </div>
+                    <div class="controls" style="margin-top: 10px; gap: 8px;">
+                        <button class="btn btn-sm btn-secondary" onclick="loadStatLeaders('points')">Points</button>
+                        <button class="btn btn-sm btn-secondary" onclick="loadStatLeaders('goals')">Goals</button>
+                        <button class="btn btn-sm btn-secondary" onclick="loadStatLeaders('assists')">Assists</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Games -->
+            <div style="margin-top: 20px;">
+                <h3 style="color: #00d4ff; margin-bottom: 15px; font-size: 1.1rem;">Recent Games</h3>
+                <div id="recentGames" style="display: grid; gap: 10px; max-height: 300px; overflow-y: auto;">
+                    <p style="color: #888;">No games recorded</p>
+                </div>
+            </div>
+
+            <div class="controls" style="margin-top: 20px; justify-content: center;">
+                <button class="btn btn-secondary" onclick="refreshGameHistory()">Refresh History</button>
+            </div>
+        </div>
     </div>
 
     <script src="/static/js/socket.io.min.js"></script>
@@ -1900,6 +1948,190 @@
 
         // Initial roster load
         refreshRosters();
+
+        // ============ Game History & Statistics ============
+        let currentGameId = null;
+
+        async function refreshGameHistory() {
+            await Promise.all([
+                loadCurrentGame(),
+                loadRecentGames(),
+                loadStatLeaders('points')
+            ]);
+        }
+
+        async function loadCurrentGame() {
+            try {
+                const result = await api('/games/current');
+                const container = document.getElementById('currentGameInfo');
+
+                if (result.game) {
+                    currentGameId = result.game.id;
+                    container.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: #4a9eff; font-weight: bold;">${result.game.home_team}</span>
+                            <span style="font-size: 1.5rem; font-weight: bold;">${result.game.home_score} - ${result.game.away_score}</span>
+                            <span style="color: #ff4a4a; font-weight: bold;">${result.game.away_team}</span>
+                        </div>
+                        <div style="text-align: center; margin-top: 8px; color: #888; font-size: 0.85rem;">
+                            Game #${result.game.id} | Started: ${formatDateTime(result.game.started_at)}
+                            ${result.game.venue ? ' | ' + result.game.venue : ''}
+                        </div>
+                        <div style="text-align: center; margin-top: 5px; color: #888; font-size: 0.85rem;">
+                            SOG: ${result.game.home_shots} - ${result.game.away_shots}
+                        </div>
+                    `;
+                } else {
+                    currentGameId = null;
+                    container.innerHTML = '<p style="color: #888; text-align: center;">No active game. Click "New Game" to start tracking.</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load current game:', e);
+            }
+        }
+
+        async function loadRecentGames() {
+            try {
+                const result = await api('/games?limit=10');
+                const container = document.getElementById('recentGames');
+
+                if (result.games && result.games.length > 0) {
+                    container.innerHTML = result.games.map(game => `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #1a1a1a; border-radius: 4px; ${game.status === 'in_progress' ? 'border-left: 3px solid #00d4ff;' : ''}">
+                            <div style="flex: 1;">
+                                <span style="color: #4a9eff;">${game.home_team}</span>
+                                <span style="font-weight: bold; margin: 0 10px;">${game.home_score} - ${game.away_score}</span>
+                                <span style="color: #ff4a4a;">${game.away_team}</span>
+                            </div>
+                            <div style="color: #888; font-size: 0.8rem; text-align: right;">
+                                ${formatDateTime(game.started_at)}<br>
+                                <span style="color: ${game.status === 'final' ? '#0f0' : game.status === 'in_progress' ? '#00d4ff' : '#f00'};">
+                                    ${game.status.toUpperCase()}
+                                </span>
+                            </div>
+                            <button class="btn btn-sm" style="margin-left: 10px; padding: 4px 8px;" onclick="viewGameSummary(${game.id})">View</button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<p style="color: #888; text-align: center;">No games recorded yet.</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load recent games:', e);
+            }
+        }
+
+        async function loadStatLeaders(stat = 'points') {
+            try {
+                const result = await api(`/stats/leaders?stat=${stat}&limit=5`);
+                const container = document.getElementById('statLeaders');
+
+                if (result.leaders && result.leaders.length > 0) {
+                    const statLabel = stat === 'points' ? 'Pts' : stat === 'goals' ? 'G' : stat === 'assists' ? 'A' : stat;
+                    container.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="color: #888; font-size: 0.8rem; border-bottom: 1px solid #333;">
+                                    <th style="text-align: left; padding: 5px;">#</th>
+                                    <th style="text-align: left; padding: 5px;">Player</th>
+                                    <th style="text-align: center; padding: 5px;">G</th>
+                                    <th style="text-align: center; padding: 5px;">A</th>
+                                    <th style="text-align: center; padding: 5px; color: #00d4ff;">${statLabel}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.leaders.map((p, i) => `
+                                    <tr style="border-bottom: 1px solid #252525;">
+                                        <td style="padding: 5px; color: #888;">${i + 1}</td>
+                                        <td style="padding: 5px;">#${p.player_number} ${p.player_name}</td>
+                                        <td style="padding: 5px; text-align: center;">${p.goals}</td>
+                                        <td style="padding: 5px; text-align: center;">${p.assists}</td>
+                                        <td style="padding: 5px; text-align: center; font-weight: bold; color: #00d4ff;">${p.points}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                } else {
+                    container.innerHTML = '<p style="color: #888; text-align: center;">No stats recorded yet.</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load stat leaders:', e);
+            }
+        }
+
+        async function startNewGame() {
+            // Use current team names from state
+            const homeName = currentState.game?.home_name || 'HOME';
+            const awayName = currentState.game?.away_name || 'AWAY';
+
+            try {
+                const result = await api('/games', 'POST', {
+                    home_team: homeName,
+                    away_team: awayName
+                });
+
+                if (result.game_id) {
+                    currentGameId = result.game_id;
+                    await refreshGameHistory();
+                    alert(`Game #${result.game_id} started!`);
+                }
+            } catch (e) {
+                alert('Failed to start new game: ' + e.message);
+            }
+        }
+
+        async function endCurrentGame(status = 'final') {
+            if (!currentGameId) {
+                alert('No active game to end.');
+                return;
+            }
+
+            const action = status === 'final' ? 'mark as final' : 'cancel';
+            if (!confirm(`Are you sure you want to ${action} this game?`)) return;
+
+            try {
+                await api(`/games/${currentGameId}/end`, 'POST', { status });
+                await refreshGameHistory();
+                alert(`Game ${status === 'final' ? 'ended' : 'cancelled'} successfully.`);
+            } catch (e) {
+                alert('Failed to end game: ' + e.message);
+            }
+        }
+
+        async function viewGameSummary(gameId) {
+            try {
+                const result = await api(`/games/${gameId}/summary`);
+                if (result.game) {
+                    const game = result.game;
+                    const goals = result.goals || [];
+
+                    let summary = `Game #${game.id}: ${game.home_team} ${game.home_score} - ${game.away_score} ${game.away_team}\n`;
+                    summary += `Status: ${game.status.toUpperCase()}\n`;
+                    summary += `Date: ${formatDateTime(game.started_at)}\n`;
+                    summary += `Shots: ${game.home_shots} - ${game.away_shots}\n\n`;
+
+                    if (goals.length > 0) {
+                        summary += `SCORING SUMMARY:\n`;
+                        goals.forEach(g => {
+                            summary += `  ${g.team.toUpperCase()} - #${g.player_number} ${g.player_name || ''} (${g.period}P ${g.game_time})\n`;
+                        });
+                    }
+
+                    alert(summary);
+                }
+            } catch (e) {
+                alert('Failed to load game summary: ' + e.message);
+            }
+        }
+
+        function formatDateTime(isoString) {
+            if (!isoString) return 'N/A';
+            const d = new Date(isoString);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Load game history on page load
+        refreshGameHistory();
     </script>
 </body>
 </html>

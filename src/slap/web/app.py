@@ -12,6 +12,7 @@ from pathlib import Path
 
 from ..core.state import state, GameState
 from ..config import get_config
+from ..db import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -1393,6 +1394,176 @@ def create_app(config_path=None) -> Flask:
             return jsonify({"status": "ok", "message": "All stats reset to zero"})
         else:
             return jsonify({"error": "Failed to save roster"}), 500
+
+    # ============ Database & History API ============
+
+    @app.route("/api/games", methods=["GET"])
+    def get_games():
+        """Get recent games history."""
+        db = get_db()
+        limit = request.args.get("limit", 20, type=int)
+        games = db.get_recent_games(limit=limit)
+        return jsonify({"status": "ok", "games": [g.to_dict() for g in games]})
+
+    @app.route("/api/games", methods=["POST"])
+    def create_game():
+        """Create a new game."""
+        db = get_db()
+        data = request.get_json() or {}
+        game_id = db.create_game(
+            home_team=data.get("home_team", state.game.home_name or "HOME"),
+            away_team=data.get("away_team", state.game.away_name or "AWAY"),
+            venue=data.get("venue", "")
+        )
+        return jsonify({"status": "ok", "game_id": game_id})
+
+    @app.route("/api/games/current", methods=["GET"])
+    def get_current_game():
+        """Get the current in-progress game."""
+        db = get_db()
+        game = db.get_current_game()
+        if game:
+            return jsonify({"status": "ok", "game": game.to_dict()})
+        return jsonify({"status": "ok", "game": None, "message": "No game in progress"})
+
+    @app.route("/api/games/<int:game_id>", methods=["GET"])
+    def get_game(game_id):
+        """Get a specific game by ID."""
+        db = get_db()
+        game = db.get_game(game_id)
+        if game:
+            return jsonify({"status": "ok", "game": game.to_dict()})
+        return jsonify({"error": "Game not found"}), 404
+
+    @app.route("/api/games/<int:game_id>", methods=["PUT"])
+    def update_game(game_id):
+        """Update game details."""
+        db = get_db()
+        data = request.get_json() or {}
+        success = db.update_game(game_id, **data)
+        if success:
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Game not found or no updates made"}), 404
+
+    @app.route("/api/games/<int:game_id>/end", methods=["POST"])
+    def end_game(game_id):
+        """Mark a game as ended."""
+        db = get_db()
+        data = request.get_json() or {}
+        status = data.get("status", "final")
+        success = db.end_game(game_id, status=status)
+        if success:
+            db.increment_games_played(game_id)
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Game not found"}), 404
+
+    @app.route("/api/games/<int:game_id>", methods=["DELETE"])
+    def delete_game(game_id):
+        """Delete a game."""
+        db = get_db()
+        success = db.delete_game(game_id)
+        if success:
+            return jsonify({"status": "ok"})
+        return jsonify({"error": "Game not found"}), 404
+
+    @app.route("/api/games/<int:game_id>/summary", methods=["GET"])
+    def get_game_summary(game_id):
+        """Get complete game summary with events."""
+        db = get_db()
+        summary = db.export_game_summary(game_id)
+        if summary:
+            return jsonify({"status": "ok", **summary})
+        return jsonify({"error": "Game not found"}), 404
+
+    @app.route("/api/games/<int:game_id>/events", methods=["GET"])
+    def get_game_events(game_id):
+        """Get all events for a game."""
+        db = get_db()
+        event_type = request.args.get("type")
+        events = db.get_game_events(game_id, event_type=event_type)
+        return jsonify({"status": "ok", "events": [e.to_dict() for e in events]})
+
+    @app.route("/api/games/<int:game_id>/goal", methods=["POST"])
+    def log_game_goal(game_id):
+        """Log a goal for a game."""
+        db = get_db()
+        data = request.get_json() or {}
+        event_id = db.log_goal(
+            game_id=game_id,
+            team=data.get("team", "home"),
+            period=data.get("period", int(state.game.period) if state.game.period.isdigit() else 1),
+            game_time=data.get("game_time", state.game.clock),
+            player_number=data.get("player_number", ""),
+            player_name=data.get("player_name", ""),
+            assist1_number=data.get("assist1_number", ""),
+            assist1_name=data.get("assist1_name", ""),
+            assist2_number=data.get("assist2_number", ""),
+            assist2_name=data.get("assist2_name", "")
+        )
+        return jsonify({"status": "ok", "event_id": event_id})
+
+    @app.route("/api/games/<int:game_id>/penalty", methods=["POST"])
+    def log_game_penalty(game_id):
+        """Log a penalty for a game."""
+        db = get_db()
+        data = request.get_json() or {}
+        event_id = db.log_penalty(
+            game_id=game_id,
+            team=data.get("team", "home"),
+            period=data.get("period", int(state.game.period) if state.game.period.isdigit() else 1),
+            game_time=data.get("game_time", state.game.clock),
+            player_number=data.get("player_number", ""),
+            player_name=data.get("player_name", ""),
+            penalty_minutes=data.get("penalty_minutes", 2),
+            penalty_type=data.get("penalty_type", "")
+        )
+        return jsonify({"status": "ok", "event_id": event_id})
+
+    @app.route("/api/games/<int:game_id>/shot", methods=["POST"])
+    def log_game_shot(game_id):
+        """Log a shot for a game."""
+        db = get_db()
+        data = request.get_json() or {}
+        db.log_shot(game_id, team=data.get("team", "home"))
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/stats", methods=["GET"])
+    def get_player_stats():
+        """Get player statistics."""
+        db = get_db()
+        season = request.args.get("season")
+        team = request.args.get("team")
+        stats = db.get_player_stats(season=season, team=team)
+        return jsonify({"status": "ok", "stats": [s.to_dict() for s in stats]})
+
+    @app.route("/api/stats/leaders", methods=["GET"])
+    def get_stat_leaders():
+        """Get statistical leaders."""
+        db = get_db()
+        season = request.args.get("season")
+        stat = request.args.get("stat", "points")
+        limit = request.args.get("limit", 10, type=int)
+        leaders = db.get_season_leaders(season=season, stat=stat, limit=limit)
+        return jsonify({"status": "ok", "leaders": [l.to_dict() for l in leaders]})
+
+    @app.route("/api/stats/team/<team>", methods=["GET"])
+    def get_team_record(team):
+        """Get team win/loss record."""
+        db = get_db()
+        season = request.args.get("season")
+        record = db.get_team_record(team, season=season)
+        return jsonify({"status": "ok", "team": team, "record": record})
+
+    @app.route("/api/stats/h2h", methods=["GET"])
+    def get_head_to_head():
+        """Get head-to-head record between two teams."""
+        db = get_db()
+        team1 = request.args.get("team1")
+        team2 = request.args.get("team2")
+        if not team1 or not team2:
+            return jsonify({"error": "Both team1 and team2 are required"}), 400
+        h2h = db.get_head_to_head(team1, team2)
+        return jsonify({"status": "ok", **h2h})
 
     # ============ WebSocket Events ============
 
