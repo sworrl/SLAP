@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Replay Bug</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="replay-bug" id="replayBug">REPLAY</div>
+    </div>
+
+    <script>
+        var socket = io();
+        var bug = document.getElementById('replayBug');
+
+        function showReplay(data) {
+            bug.textContent = data && data.text ? data.text : 'REPLAY';
+            bug.classList.add('active');
+
+            // Auto-hide
+            if (data && data.duration) {
+                setTimeout(hideReplay, data.duration);
+            }
+        }
+
+        function hideReplay() {
+            bug.classList.remove('active');
+        }
+
+        socket.on('replay', showReplay);
+        socket.on('hide_replay', hideReplay);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'replay') {
+                showReplay(event.data.data);
+            } else if (event.data && event.data.type === 'hide_replay') {
+                hideReplay();
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showReplay({ duration: 5000 });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Shot Counter</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="shot-counter" id="shotCounter">
+            <div class="label">SOG</div>
+            <div class="home-shots" id="homeShots">0</div>
+            <div class="away-shots" id="awayShots">0</div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+
+        function updateShots(data) {
+            if (data.home !== undefined) {
+                document.getElementById('homeShots').textContent = data.home;
+            }
+            if (data.away !== undefined) {
+                document.getElementById('awayShots').textContent = data.away;
+            }
+        }
+
+        function toggleVisibility(visible) {
+            document.getElementById('shotCounter').style.display = visible ? 'flex' : 'none';
+        }
+
+        socket.on('shots', updateShots);
+        socket.on('show_shots', function() { toggleVisibility(true); });
+        socket.on('hide_shots', function() { toggleVisibility(false); });
+
+        socket.on('game_state', function(data) {
+            if (data.shots) {
+                updateShots(data.shots);
+            }
+        });
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'shots') {
+                updateShots(event.data.data);
+            } else if (event.data && event.data.type === 'team_config') {
+                var config = event.data.data;
+                var root = document.documentElement;
+                if (config.home && config.home.primary_color) {
+                    root.style.setProperty('--home-primary', config.home.primary_color);
+                }
+                if (config.away && config.away.primary_color) {
+                    root.style.setProperty('--away-primary', config.away.primary_color);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

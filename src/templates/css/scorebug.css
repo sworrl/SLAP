@@ -1,5 +1,16 @@
 /* SLAP Hockey Scorebug Styles */
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;900&display=swap');
+
+:root {
+    /* Team Colors - Customizable via JavaScript */
+    --home-primary: #1b6eb8;
+    --home-secondary: #00529c;
+    --home-accent: #ffffff;
+    --away-primary: #aa0000;
+    --away-secondary: #780000;
+    --away-accent: #ffffff;
+    --league-color: #1b6eb8;
+}
 
 * {
     box-sizing: border-box;
@@ -15,20 +26,105 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* Animations */
+/* ============ Animations ============ */
+
+/* Intro/Outro */
 @keyframes intro {
-    0% { opacity: 0; transform: translateY(-10px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes outro {
-    0% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-10px); }
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-20px) scale(0.95); }
 }
 
+/* Slide in from sides */
+@keyframes slideInLeft {
+    0% { opacity: 0; transform: translateX(-50px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+    0% { opacity: 0; transform: translateX(50px); }
+    100% { opacity: 1; transform: translateX(0); }
+}
+
+/* Goal Flash - Enhanced */
 @keyframes goalFlash {
-    0%, 100% { background-color: rgba(0, 0, 0, 0.9); }
-    25%, 75% { background-color: rgba(255, 215, 0, 0.9); }
+    0%, 100% {
+        background-color: rgba(0, 0, 0, 0.9);
+        transform: scale(1);
+    }
+    15%, 85% {
+        background-color: rgba(255, 215, 0, 0.95);
+        transform: scale(1.05);
+    }
+    30%, 70% {
+        background-color: rgba(255, 255, 255, 0.95);
+        transform: scale(1.1);
+    }
+    50% {
+        background-color: rgba(255, 215, 0, 0.95);
+        transform: scale(1.15);
+    }
+}
+
+/* Score Pop */
+@keyframes scorePop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* Pulse Glow */
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 215, 0, 0.5);
+    }
+}
+
+/* Clock Tick */
+@keyframes clockTick {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Power Play Pulse */
+@keyframes powerPlayPulse {
+    0%, 100% {
+        background: linear-gradient(135deg, rgba(255, 221, 0, 0.95), rgba(255, 170, 0, 0.95));
+    }
+    50% {
+        background: linear-gradient(135deg, rgba(255, 240, 100, 0.98), rgba(255, 200, 50, 0.98));
+    }
+}
+
+/* Shimmer Effect */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* Breathing Glow */
+@keyframes breathe {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.1); }
+}
+
+/* SVG Line Draw */
+@keyframes drawLine {
+    0% { stroke-dashoffset: 1000; }
+    100% { stroke-dashoffset: 0; }
+}
+
+/* Rotate */
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* Canvas */
@@ -95,11 +191,27 @@ body {
 .period {
     width: 100px;
     height: 65px;
-    background: linear-gradient(135deg, rgba(27, 110, 184, 0.95), rgba(0, 82, 156, 0.95));
+    background: linear-gradient(135deg, var(--league-color), color-mix(in srgb, var(--league-color) 70%, black));
     border-radius: 10px 0 0 10px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Shimmer overlay on period */
+.period::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 3s infinite;
+    pointer-events: none;
 }
 
 .period .label {
@@ -172,11 +284,41 @@ body {
 }
 
 .t1 {
-    background: linear-gradient(135deg, rgba(27, 110, 184, 0.95), rgba(0, 82, 156, 0.95));
+    background: linear-gradient(135deg, var(--home-primary), var(--home-secondary));
+    position: relative;
+    overflow: hidden;
+}
+
+.t1::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 4s infinite;
+    pointer-events: none;
 }
 
 .t2 {
-    background: linear-gradient(135deg, rgba(170, 0, 0, 0.95), rgba(120, 0, 0, 0.95));
+    background: linear-gradient(135deg, var(--away-primary), var(--away-secondary));
+    position: relative;
+    overflow: hidden;
+}
+
+.t2::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 4s infinite 0.5s;
+    pointer-events: none;
 }
 
 .t1 .label, .t2 .label {
@@ -211,7 +353,11 @@ body {
 }
 
 .t1-score.goal, .t2-score.goal {
-    animation: goalFlash 0.5s ease-in-out 3;
+    animation: goalFlash 0.6s ease-in-out 4;
+}
+
+.t1-score.goal .value, .t2-score.goal .value {
+    animation: scorePop 0.6s ease-in-out 4;
 }
 
 /* Power Play Dropdown */
@@ -234,9 +380,67 @@ body {
     grid-template-rows: 1fr;
     visibility: visible;
     padding: 8px 10px;
+    animation: powerPlayPulse 1.5s ease-in-out infinite;
 }
 
 .team-power-play {
     min-height: 0;
     overflow: hidden;
+}
+
+/* ============ Intro Animations for Elements ============ */
+.scorebug.intro .league-logo {
+    animation: slideInLeft 0.5s ease-out;
+}
+
+.scorebug.intro .game-time {
+    animation: slideInLeft 0.5s ease-out 0.1s both;
+}
+
+.scorebug.intro .team-one {
+    animation: slideInLeft 0.5s ease-out 0.2s both;
+}
+
+.scorebug.intro .team-two {
+    animation: slideInRight 0.5s ease-out 0.3s both;
+}
+
+/* ============ Team Logo Backgrounds ============ */
+.t1-logo {
+    background-color: var(--home-accent);
+    border-radius: 10px 0 0 10px;
+}
+
+.t2-logo {
+    background-color: var(--away-accent);
+    border-radius: 0 10px 10px 0;
+}
+
+/* Logo hover effect */
+.t1-logo img, .t2-logo img {
+    transition: transform 0.3s ease;
+}
+
+.t1-logo:hover img, .t2-logo:hover img {
+    transform: scale(1.05);
+}
+
+/* ============ Additional Effects ============ */
+
+/* Low time warning (under 1 minute) */
+.gameclock.low-time {
+    animation: clockTick 0.5s ease-in-out infinite;
+    color: #ff4444;
+}
+
+/* Overtime styling */
+.period.overtime {
+    background: linear-gradient(135deg, #ff6600, #cc4400);
+    animation: breathe 2s ease-in-out infinite;
+}
+
+/* Shootout styling */
+.period.shootout {
+    background: linear-gradient(135deg, #9933ff, #6600cc);
+    animation: breathe 2s ease-in-out infinite;
 }

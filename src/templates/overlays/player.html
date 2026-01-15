@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Player Card</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="player-card" id="playerCard">
+            <div class="team-stripe"></div>
+            <div class="player-photo">
+                <img src="" alt="" id="playerPhoto" style="display:none;">
+                <div class="placeholder" id="photoPlaceholder"></div>
+            </div>
+            <div class="player-info">
+                <div class="player-number" id="playerNumber">#00</div>
+                <div class="player-name" id="playerName">PLAYER NAME</div>
+                <div class="player-position" id="playerPosition">Forward</div>
+                <div class="player-stats" id="playerStats">
+                    <div class="stat">
+                        <div class="stat-value" id="statGoals">0</div>
+                        <div class="stat-label">G</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="statAssists">0</div>
+                        <div class="stat-label">A</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value" id="statPoints">0</div>
+                        <div class="stat-label">PTS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var playerCard = document.getElementById('playerCard');
+
+        function showPlayer(data) {
+            var isHome = data.team === 'home';
+
+            // Update team class
+            playerCard.className = 'player-card active ' + (isHome ? 'home' : 'away');
+
+            // Update photo
+            var photo = document.getElementById('playerPhoto');
+            var placeholder = document.getElementById('photoPlaceholder');
+            if (data.photo) {
+                photo.src = data.photo;
+                photo.style.display = 'block';
+                placeholder.style.display = 'none';
+            } else {
+                photo.style.display = 'none';
+                placeholder.style.display = 'block';
+                placeholder.textContent = (data.name || 'P').charAt(0);
+            }
+
+            // Update info
+            document.getElementById('playerNumber').textContent = '#' + (data.number || '00');
+            document.getElementById('playerName').textContent = data.name || 'PLAYER';
+            document.getElementById('playerPosition').textContent = data.position || 'Forward';
+
+            // Update stats
+            document.getElementById('statGoals').textContent = data.goals || 0;
+            document.getElementById('statAssists').textContent = data.assists || 0;
+            document.getElementById('statPoints').textContent = (data.goals || 0) + (data.assists || 0);
+
+            // Auto-hide after duration
+            if (data.duration) {
+                setTimeout(hidePlayer, data.duration);
+            }
+        }
+
+        function hidePlayer() {
+            playerCard.classList.remove('active');
+            setTimeout(function() {
+                playerCard.className = 'player-card';
+            }, 500);
+        }
+
+        socket.on('show_player', showPlayer);
+        socket.on('hide_player', hidePlayer);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'show_player') {
+                showPlayer(event.data.data);
+            } else if (event.data && event.data.type === 'hide_player') {
+                hidePlayer();
+            } else if (event.data && event.data.type === 'team_config') {
+                var config = event.data.data;
+                var root = document.documentElement;
+                if (config.home) {
+                    if (config.home.primary_color) root.style.setProperty('--home-primary', config.home.primary_color);
+                    if (config.home.secondary_color) root.style.setProperty('--home-secondary', config.home.secondary_color);
+                }
+                if (config.away) {
+                    if (config.away.primary_color) root.style.setProperty('--away-primary', config.away.primary_color);
+                    if (config.away.secondary_color) root.style.setProperty('--away-secondary', config.away.secondary_color);
+                }
+            }
+        });
+
+        // Demo - press 'd' to show sample player
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showPlayer({
+                    team: 'home',
+                    number: '87',
+                    name: 'Sidney Crosby',
+                    position: 'Center',
+                    goals: 15,
+                    assists: 32,
+                    duration: 5000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -169,7 +169,7 @@ def do_install():
     print_status("Or run manually:")
     print_status(f"  cd {SRC_DIR}")
     print_status("  source venv/bin/activate")
-    print_status("  python run.py --simulate")
+    print_status("  python run.py")
     print()
 
 def do_update():
@@ -262,9 +262,8 @@ def do_start(args):
     if args.debug:
         cmd.append("--debug")
 
-    # Default to simulate mode if not explicitly disabled
-    if not args.simulate and "--simulate" not in cmd and "--no-simulate" not in " ".join(cmd):
-        cmd.append("--simulate")
+    if args.serial:
+        cmd.extend(["--serial", args.serial])
 
     # Start in background
     with open(LOG_FILE, "w") as log:
@@ -398,8 +397,9 @@ def show_help():
     print()
     print("Start options:")
     print(f"  --port, -p <port>   Web server port (default: {DEFAULT_PORT})")
-    print("  --simulate, -s      Run in simulation mode (default)")
-    print("  --debug, -d         Enable debug logging")
+    print("  --serial <device>   Serial port (e.g., /dev/ttyUSB0 or COM3)")
+    print("  --simulate, -s      Run in simulation/demo mode (for testing)")
+    print("  --debug, -d         Enable debug logging (shows raw serial data)")
     print()
     print("Logs options:")
     print("  --follow, -f        Follow log output in real-time")
@@ -407,8 +407,8 @@ def show_help():
     print()
     print("Examples:")
     print(f"  {sys.argv[0]} install")
-    print(f"  {sys.argv[0]} start --port 9876")
-    print(f"  {sys.argv[0]} restart")
+    print(f"  {sys.argv[0]} start              # Live mode (reads serial port)")
+    print(f"  {sys.argv[0]} start --simulate   # Demo mode (fake game data)")
     print(f"  {sys.argv[0]} logs -f")
     print(f"  {sys.argv[0]} stop")
     print()
@@ -421,6 +421,7 @@ def main():
     parser.add_argument("command", nargs="?", default="help",
                         choices=["install", "update", "uninstall", "start", "stop", "restart", "status", "logs", "help"])
     parser.add_argument("--port", "-p", type=int, default=None)
+    parser.add_argument("--serial", default=None)
     parser.add_argument("--simulate", "-s", action="store_true")
     parser.add_argument("--debug", "-d", action="store_true")
     parser.add_argument("--follow", "-f", action="store_true")

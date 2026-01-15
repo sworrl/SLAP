@@ -43,6 +43,8 @@ def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_eve
     """
     logger = logging.getLogger("serial_reader")
     buffer = bytearray()
+    bytes_received = 0
+    packets_parsed = 0
 
     logger.info("Serial reader started")
     state.serial_connected = True
@@ -53,13 +55,25 @@ def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_eve
             if serial_port.in_waiting > 0:
                 data = serial_port.read(min(512, serial_port.in_waiting))
                 buffer.extend(data)
+                bytes_received += len(data)
+
+                # Log raw bytes in debug mode (hex format)
+                logger.debug(f"RX ({len(data)} bytes): {data.hex(' ')}")
 
             # Extract complete packets
             packets, buffer = parser.extract_packets(buffer)
 
             for packet in packets:
+                packets_parsed += 1
+                logger.debug(f"Packet #{packets_parsed} ({len(packet)} bytes): {packet.hex(' ')}")
+
                 game_data = parser.parse(packet)
                 if game_data:
+                    # Log parsed data
+                    logger.info(f"PARSED: Period={game_data.period} Clock={game_data.clock} "
+                               f"Home={game_data.home_score} Away={game_data.away_score} "
+                               f"HomePen={game_data.home_penalties} AwayPen={game_data.away_penalties}")
+
                     # Update state
                     state.update_game(
                         home_score=game_data.home_score,
@@ -74,6 +88,7 @@ def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_eve
                     event = hockey_logic.process_update(game_data.to_dict())
                     if event and event.startswith("GOAL_"):
                         side = event.replace("GOAL_", "")
+                        logger.info(f"GOAL detected: {side}")
                         state.update_game(last_goal=side)
                         if caspar_client:
                             caspar_client.trigger_goal(side)
@@ -88,7 +103,7 @@ def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_eve
         logger.error(f"Serial reader error: {e}")
     finally:
         state.serial_connected = False
-        logger.info("Serial reader stopped")
+        logger.info(f"Serial reader stopped. Total: {bytes_received} bytes, {packets_parsed} packets")
 
 
 def main():
@@ -122,6 +137,11 @@ def main():
         action="store_true",
         help="Disable CasparCG connection"
     )
+    parser.add_argument(
+        "--serial",
+        help="Serial port device (e.g., /dev/ttyUSB0 or COM3)",
+        default=None
+    )
 
     args = parser.parse_args()
 
@@ -135,6 +155,8 @@ def main():
         config.debug = True
     if args.port:
         config.web.port = args.port
+    if args.serial:
+        config.serial.port = args.serial
     if args.no_caspar:
         config.caspar.enabled = False
 

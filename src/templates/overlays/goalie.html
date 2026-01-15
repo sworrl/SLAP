@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Goalie Stats</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="goalie-stats" id="goalieStats">
+            <div class="header">
+                <div class="goalie-photo">
+                    <img src="" alt="" id="goaliePhoto" style="display:none;">
+                </div>
+                <div class="goalie-info">
+                    <div class="number" id="goalieNumber">#00</div>
+                    <div class="name" id="goalieName">GOALIE NAME</div>
+                </div>
+            </div>
+            <div class="stats-row">
+                <div class="stat">
+                    <div class="stat-value" id="saves">0</div>
+                    <div class="stat-label">SAVES</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="shots">0</div>
+                    <div class="stat-label">SHOTS</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="savePct">.000</div>
+                    <div class="stat-label">SV%</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="gaa">0.00</div>
+                    <div class="stat-label">GAA</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var stats = document.getElementById('goalieStats');
+
+        function showGoalie(data) {
+            stats.classList.add('active');
+
+            // Update goalie info
+            document.getElementById('goalieNumber').textContent = '#' + (data.number || '00');
+            document.getElementById('goalieName').textContent = data.name || 'GOALIE';
+
+            // Update photo
+            var photo = document.getElementById('goaliePhoto');
+            if (data.photo) {
+                photo.src = data.photo;
+                photo.style.display = 'block';
+            } else {
+                photo.style.display = 'none';
+            }
+
+            // Update stats
+            var saves = data.saves || 0;
+            var shots = data.shots || 0;
+            var savePct = shots > 0 ? (saves / shots) : 0;
+
+            document.getElementById('saves').textContent = saves;
+            document.getElementById('shots').textContent = shots;
+            document.getElementById('savePct').textContent = '.' + Math.round(savePct * 1000).toString().padStart(3, '0');
+            document.getElementById('gaa').textContent = (data.gaa || 0).toFixed(2);
+
+            // Auto-hide
+            if (data.duration) {
+                setTimeout(hideGoalie, data.duration);
+            }
+        }
+
+        function hideGoalie() {
+            stats.classList.remove('active');
+        }
+
+        function updateGoalie(data) {
+            // Update stats without animation
+            if (data.saves !== undefined) document.getElementById('saves').textContent = data.saves;
+            if (data.shots !== undefined) document.getElementById('shots').textContent = data.shots;
+            if (data.saves !== undefined && data.shots !== undefined) {
+                var savePct = data.shots > 0 ? (data.saves / data.shots) : 0;
+                document.getElementById('savePct').textContent = '.' + Math.round(savePct * 1000).toString().padStart(3, '0');
+            }
+            if (data.gaa !== undefined) document.getElementById('gaa').textContent = data.gaa.toFixed(2);
+        }
+
+        socket.on('show_goalie', showGoalie);
+        socket.on('hide_goalie', hideGoalie);
+        socket.on('update_goalie', updateGoalie);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'show_goalie') {
+                showGoalie(event.data.data);
+            } else if (event.data && event.data.type === 'hide_goalie') {
+                hideGoalie();
+            } else if (event.data && event.data.type === 'update_goalie') {
+                updateGoalie(event.data.data);
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showGoalie({
+                    number: '30',
+                    name: 'MATT MURRAY',
+                    saves: 28,
+                    shots: 31,
+                    gaa: 2.45,
+                    duration: 6000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

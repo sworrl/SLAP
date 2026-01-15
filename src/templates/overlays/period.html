@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Period Summary</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="period-summary" id="periodSummary">
+            <div class="period-title" id="periodTitle">END OF 1ST PERIOD</div>
+            <div class="teams-row">
+                <div class="team home">
+                    <div class="team-logo">
+                        <img src="../Logos/home.svg" alt="" id="homeLogo">
+                    </div>
+                    <div class="team-name" id="homeTeamName">HOME</div>
+                </div>
+                <div class="team away">
+                    <div class="team-logo">
+                        <img src="../Logos/away.svg" alt="" id="awayLogo">
+                    </div>
+                    <div class="team-name" id="awayTeamName">AWAY</div>
+                </div>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-row">
+                    <div class="home-stat" id="homeScore">0</div>
+                    <div class="stat-label">SCORE</div>
+                    <div class="away-stat" id="awayScore">0</div>
+                </div>
+                <div class="stat-row">
+                    <div class="home-stat" id="homeShots">0</div>
+                    <div class="stat-label">SHOTS</div>
+                    <div class="away-stat" id="awayShots">0</div>
+                </div>
+                <div class="stat-row">
+                    <div class="home-stat" id="homePIM">0</div>
+                    <div class="stat-label">PIM</div>
+                    <div class="away-stat" id="awayPIM">0</div>
+                </div>
+                <div class="stat-row">
+                    <div class="home-stat" id="homeFO">0%</div>
+                    <div class="stat-label">FACEOFFS</div>
+                    <div class="away-stat" id="awayFO">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var summary = document.getElementById('periodSummary');
+
+        function showSummary(data) {
+            summary.classList.add('active');
+
+            // Update period title
+            var periodNames = ['1ST', '2ND', '3RD', 'OT'];
+            var periodNum = data.period || 1;
+            var periodName = periodNames[periodNum - 1] || periodNum + 'TH';
+            document.getElementById('periodTitle').textContent =
+                'END OF ' + periodName + ' PERIOD';
+
+            // Update team names
+            if (data.homeTeam) document.getElementById('homeTeamName').textContent = data.homeTeam;
+            if (data.awayTeam) document.getElementById('awayTeamName').textContent = data.awayTeam;
+
+            // Update scores
+            document.getElementById('homeScore').textContent = data.homeScore || 0;
+            document.getElementById('awayScore').textContent = data.awayScore || 0;
+
+            // Update shots
+            document.getElementById('homeShots').textContent = data.homeShots || 0;
+            document.getElementById('awayShots').textContent = data.awayShots || 0;
+
+            // Update PIM
+            document.getElementById('homePIM').textContent = data.homePIM || 0;
+            document.getElementById('awayPIM').textContent = data.awayPIM || 0;
+
+            // Update faceoffs
+            document.getElementById('homeFO').textContent = (data.homeFO || 0) + '%';
+            document.getElementById('awayFO').textContent = (data.awayFO || 0) + '%';
+
+            // Auto-hide after duration
+            if (data.duration) {
+                setTimeout(hideSummary, data.duration);
+            }
+        }
+
+        function hideSummary() {
+            summary.classList.remove('active');
+        }
+
+        socket.on('period_summary', showSummary);
+        socket.on('hide_period_summary', hideSummary);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'period_summary') {
+                showSummary(event.data.data);
+            } else if (event.data && event.data.type === 'hide_period_summary') {
+                hideSummary();
+            } else if (event.data && event.data.type === 'team_config') {
+                var config = event.data.data;
+                if (config.home && config.home.name) {
+                    document.getElementById('homeTeamName').textContent = config.home.name;
+                }
+                if (config.away && config.away.name) {
+                    document.getElementById('awayTeamName').textContent = config.away.name;
+                }
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showSummary({
+                    period: 1,
+                    homeTeam: 'PENGUINS',
+                    awayTeam: 'CAPITALS',
+                    homeScore: 2,
+                    awayScore: 1,
+                    homeShots: 12,
+                    awayShots: 9,
+                    homePIM: 4,
+                    awayPIM: 2,
+                    homeFO: 55,
+                    awayFO: 45,
+                    duration: 8000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

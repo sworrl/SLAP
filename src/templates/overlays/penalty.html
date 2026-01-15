@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Penalty Box</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="penalty-box" id="penaltyBox">
+            <div class="team-penalties home" id="homePenalties">
+                <div class="team-name" id="homeTeamName">HOME</div>
+                <div id="homePenaltyList"></div>
+            </div>
+            <div class="team-penalties away" id="awayPenalties">
+                <div class="team-name" id="awayTeamName">AWAY</div>
+                <div id="awayPenaltyList"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var penalties = { home: [], away: [] };
+
+        function formatTime(seconds) {
+            var mins = Math.floor(seconds / 60);
+            var secs = seconds % 60;
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function renderPenalties(team) {
+            var list = document.getElementById(team + 'PenaltyList');
+            list.innerHTML = '';
+
+            penalties[team].forEach(function(penalty) {
+                var item = document.createElement('div');
+                item.className = 'penalty-item';
+                item.innerHTML =
+                    '<div class="player-number">#' + penalty.number + '</div>' +
+                    '<div class="penalty-info">' +
+                        '<div class="player-name">' + penalty.name + '</div>' +
+                        '<div class="penalty-type">' + penalty.type + '</div>' +
+                    '</div>' +
+                    '<div class="penalty-time">' + formatTime(penalty.timeRemaining) + '</div>';
+                list.appendChild(item);
+            });
+
+            // Show/hide team section based on penalties
+            document.getElementById(team + 'Penalties').style.display =
+                penalties[team].length > 0 ? 'block' : 'none';
+        }
+
+        function updatePenalties(data) {
+            if (data.home !== undefined) {
+                penalties.home = data.home;
+                renderPenalties('home');
+            }
+            if (data.away !== undefined) {
+                penalties.away = data.away;
+                renderPenalties('away');
+            }
+
+            // Update team names if provided
+            if (data.homeTeamName) {
+                document.getElementById('homeTeamName').textContent = data.homeTeamName;
+            }
+            if (data.awayTeamName) {
+                document.getElementById('awayTeamName').textContent = data.awayTeamName;
+            }
+
+            // Show/hide entire box
+            var hasAny = penalties.home.length > 0 || penalties.away.length > 0;
+            document.getElementById('penaltyBox').style.display = hasAny ? 'flex' : 'none';
+        }
+
+        function addPenalty(data) {
+            var team = data.team || 'home';
+            penalties[team].push({
+                number: data.number || '00',
+                name: data.name || 'Player',
+                type: data.type || '2 MIN - Minor',
+                timeRemaining: data.duration || 120
+            });
+            renderPenalties(team);
+        }
+
+        function removePenalty(data) {
+            var team = data.team || 'home';
+            if (data.index !== undefined) {
+                penalties[team].splice(data.index, 1);
+            } else {
+                penalties[team].shift(); // Remove oldest
+            }
+            renderPenalties(team);
+        }
+
+        // Tick down penalty times
+        setInterval(function() {
+            ['home', 'away'].forEach(function(team) {
+                var changed = false;
+                penalties[team] = penalties[team].filter(function(p) {
+                    if (p.timeRemaining > 0) {
+                        p.timeRemaining--;
+                        changed = true;
+                        return p.timeRemaining > 0;
+                    }
+                    return false;
+                });
+                if (changed) renderPenalties(team);
+            });
+        }, 1000);
+
+        socket.on('penalties', updatePenalties);
+        socket.on('add_penalty', addPenalty);
+        socket.on('remove_penalty', removePenalty);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'penalties') {
+                updatePenalties(event.data.data);
+            } else if (event.data && event.data.type === 'add_penalty') {
+                addPenalty(event.data.data);
+            } else if (event.data && event.data.type === 'team_config') {
+                var config = event.data.data;
+                var root = document.documentElement;
+                if (config.home) {
+                    if (config.home.primary_color) root.style.setProperty('--home-primary', config.home.primary_color);
+                    if (config.home.name) document.getElementById('homeTeamName').textContent = config.home.name;
+                }
+                if (config.away) {
+                    if (config.away.primary_color) root.style.setProperty('--away-primary', config.away.primary_color);
+                    if (config.away.name) document.getElementById('awayTeamName').textContent = config.away.name;
+                }
+            }
+        });
+
+        // Initially hide
+        document.getElementById('penaltyBox').style.display = 'none';
+    </script>
+</body>
+</html>

@@ -276,6 +276,60 @@ function updateFromParent(data) {
     updateFromJSON(data);
 }
 
+/**
+ * Apply team configuration (colors, names, logos)
+ */
+function applyTeamConfig(config) {
+    var root = document.documentElement;
+
+    if (config.home) {
+        // Update home team colors
+        if (config.home.primary_color) {
+            root.style.setProperty('--home-primary', config.home.primary_color);
+        }
+        if (config.home.secondary_color) {
+            root.style.setProperty('--home-secondary', config.home.secondary_color);
+        }
+        // Update home team name
+        if (config.home.name) {
+            var t1Name = document.getElementById('t1Name');
+            if (t1Name) t1Name.textContent = config.home.name;
+        }
+        // Update home team logo
+        if (config.home.logo) {
+            var t1Logo = document.querySelector('#t1Logo img');
+            if (t1Logo) t1Logo.src = 'Logos/' + config.home.logo;
+        }
+    }
+
+    if (config.away) {
+        // Update away team colors
+        if (config.away.primary_color) {
+            root.style.setProperty('--away-primary', config.away.primary_color);
+        }
+        if (config.away.secondary_color) {
+            root.style.setProperty('--away-secondary', config.away.secondary_color);
+        }
+        // Update away team name
+        if (config.away.name) {
+            var t2Name = document.getElementById('t2Name');
+            if (t2Name) t2Name.textContent = config.away.name;
+        }
+        // Update away team logo
+        if (config.away.logo) {
+            var t2Logo = document.querySelector('#t2Logo img');
+            if (t2Logo) t2Logo.src = 'Logos/' + config.away.logo;
+        }
+    }
+}
+
+// Listen for messages from parent window
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'team_config') {
+        applyTeamConfig(event.data.data);
+    }
+});
+
 // ============ WebSocket Connection (Standalone) ============
 
 if (typeof io !== 'undefined') {

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Three Stars</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="three-stars" id="threeStars">
+            <div class="title">THREE STARS OF THE GAME</div>
+            <div class="stars-row">
+                <div class="star third">
+                    <div class="star-icon">★★★</div>
+                    <div class="player-photo" id="star3Photo"></div>
+                    <div class="player-number" id="star3Number">#00</div>
+                    <div class="player-name" id="star3Name">THIRD STAR</div>
+                    <div class="player-stats" id="star3Stats">0G - 0A</div>
+                </div>
+                <div class="star first">
+                    <div class="star-icon">★</div>
+                    <div class="player-photo" id="star1Photo"></div>
+                    <div class="player-number" id="star1Number">#00</div>
+                    <div class="player-name" id="star1Name">FIRST STAR</div>
+                    <div class="player-stats" id="star1Stats">0G - 0A</div>
+                </div>
+                <div class="star second">
+                    <div class="star-icon">★★</div>
+                    <div class="player-photo" id="star2Photo"></div>
+                    <div class="player-number" id="star2Number">#00</div>
+                    <div class="player-name" id="star2Name">SECOND STAR</div>
+                    <div class="player-stats" id="star2Stats">0G - 0A</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var stars = document.getElementById('threeStars');
+
+        function showStars(data) {
+            stars.classList.add('active');
+
+            // Update each star
+            [1, 2, 3].forEach(function(n) {
+                var starData = data['star' + n] || data.stars && data.stars[n - 1] || {};
+
+                document.getElementById('star' + n + 'Number').textContent = '#' + (starData.number || '00');
+                document.getElementById('star' + n + 'Name').textContent = starData.name || 'PLAYER';
+
+                // Format stats
+                var stats = '';
+                if (starData.goals !== undefined || starData.assists !== undefined) {
+                    stats = (starData.goals || 0) + 'G - ' + (starData.assists || 0) + 'A';
+                } else if (starData.saves !== undefined) {
+                    stats = starData.saves + ' SAVES';
+                } else if (starData.stats) {
+                    stats = starData.stats;
+                }
+                document.getElementById('star' + n + 'Stats').textContent = stats;
+
+                // Photo
+                var photoDiv = document.getElementById('star' + n + 'Photo');
+                if (starData.photo) {
+                    photoDiv.innerHTML = '<img src="' + starData.photo + '" alt="">';
+                } else {
+                    photoDiv.innerHTML = '';
+                }
+            });
+
+            // Auto-hide
+            if (data.duration) {
+                setTimeout(hideStars, data.duration);
+            }
+        }
+
+        function hideStars() {
+            stars.classList.remove('active');
+        }
+
+        socket.on('three_stars', showStars);
+        socket.on('hide_three_stars', hideStars);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'three_stars') {
+                showStars(event.data.data);
+            } else if (event.data && event.data.type === 'hide_three_stars') {
+                hideStars();
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showStars({
+                    star1: { number: '87', name: 'CROSBY', goals: 2, assists: 1 },
+                    star2: { number: '71', name: 'MALKIN', goals: 1, assists: 2 },
+                    star3: { number: '30', name: 'MURRAY', saves: 35 },
+                    duration: 10000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Ticker</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="ticker" id="ticker" style="display: none;">
+            <div class="ticker-label" id="tickerLabel">SCORES</div>
+            <div class="ticker-content" id="tickerContent"></div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var ticker = document.getElementById('ticker');
+        var content = document.getElementById('tickerContent');
+
+        function renderScores(scores) {
+            var html = '';
+
+            scores.forEach(function(game, index) {
+                if (index > 0) {
+                    html += '<span class="divider">|</span>';
+                }
+
+                html += '<div class="ticker-item">' +
+                    '<span class="teams">' +
+                        '<span>' + (game.away || 'AWAY') + '</span>' +
+                        '<span class="score">' + (game.awayScore || 0) + '</span>' +
+                        '<span>@</span>' +
+                        '<span>' + (game.home || 'HOME') + '</span>' +
+                        '<span class="score">' + (game.homeScore || 0) + '</span>' +
+                    '</span>' +
+                    '<span class="status ' + (game.final ? 'final' : '') + '">' +
+                        (game.status || 'FINAL') +
+                    '</span>' +
+                '</div>';
+            });
+
+            // Duplicate for seamless scroll
+            content.innerHTML = html + html;
+        }
+
+        function showTicker(data) {
+            ticker.style.display = 'flex';
+
+            // Update label
+            if (data.label) {
+                document.getElementById('tickerLabel').textContent = data.label;
+            }
+
+            // Update content
+            if (data.scores) {
+                renderScores(data.scores);
+            } else if (data.text) {
+                content.innerHTML = '<div class="ticker-item">' + data.text + '</div>' +
+                                   '<div class="ticker-item">' + data.text + '</div>';
+            }
+
+            // Adjust animation speed based on content
+            var width = content.scrollWidth / 2;
+            var duration = Math.max(15, width / 50); // 50px per second
+            content.style.animationDuration = duration + 's';
+        }
+
+        function hideTicker() {
+            ticker.style.display = 'none';
+        }
+
+        function updateTicker(data) {
+            if (data.scores) {
+                renderScores(data.scores);
+            }
+        }
+
+        socket.on('ticker', showTicker);
+        socket.on('hide_ticker', hideTicker);
+        socket.on('update_ticker', updateTicker);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'ticker') {
+                showTicker(event.data.data);
+            } else if (event.data && event.data.type === 'hide_ticker') {
+                hideTicker();
+            } else if (event.data && event.data.type === 'update_ticker') {
+                updateTicker(event.data.data);
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showTicker({
+                    label: 'NHL SCORES',
+                    scores: [
+                        { away: 'NYR', awayScore: 3, home: 'BOS', homeScore: 2, status: 'FINAL', final: true },
+                        { away: 'TOR', awayScore: 4, home: 'MTL', homeScore: 1, status: 'FINAL', final: true },
+                        { away: 'DET', awayScore: 2, home: 'CHI', homeScore: 2, status: '3RD - 5:32' },
+                        { away: 'PIT', awayScore: 0, home: 'WSH', homeScore: 0, status: '1ST - 12:00' },
+                        { away: 'COL', awayScore: 5, home: 'VGK', homeScore: 3, status: 'FINAL', final: true }
+                    ]
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+{
+  "home": {
+    "players": [
+      {"number": "1", "name": "GOALIE", "position": "G", "goals": 0, "assists": 0},
+      {"number": "2", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "3", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "4", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "5", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "6", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "7", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "10", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "11", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "12", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "14", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "15", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "16", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "17", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "18", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "19", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "21", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "22", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "30", "name": "BACKUP", "position": "G", "goals": 0, "assists": 0}
+    ]
+  },
+  "away": {
+    "players": [
+      {"number": "1", "name": "GOALIE", "position": "G", "goals": 0, "assists": 0},
+      {"number": "2", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "3", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "4", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "5", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "6", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "7", "name": "PLAYER", "position": "D", "goals": 0, "assists": 0},
+      {"number": "10", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "11", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "12", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "14", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "15", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "16", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "17", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "18", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "19", "name": "PLAYER", "position": "RW", "goals": 0, "assists": 0},
+      {"number": "21", "name": "PLAYER", "position": "C", "goals": 0, "assists": 0},
+      {"number": "22", "name": "PLAYER", "position": "LW", "goals": 0, "assists": 0},
+      {"number": "30", "name": "BACKUP", "position": "G", "goals": 0, "assists": 0}
+    ]
+  }
+}

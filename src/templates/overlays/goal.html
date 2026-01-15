@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Goal Splash</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="goal-splash" id="goalSplash">
+            <div class="particles" id="particles"></div>
+            <div class="goal-team-logo" id="teamLogo">
+                <img src="../Logos/home.svg" alt="" id="logoImg">
+            </div>
+            <div class="goal-text">GOAL!</div>
+            <div class="goal-scorer">
+                <span class="number" id="scorerNumber">#00</span>
+                <span id="scorerName">PLAYER NAME</span>
+            </div>
+            <div class="goal-details" id="goalDetails">
+                Assists: <span id="assists">None</span>
+            </div>
+            <div class="goal-time" id="goalTime">1ST - 15:32</div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var goalSplash = document.getElementById('goalSplash');
+        var particlesContainer = document.getElementById('particles');
+
+        // Create confetti particles
+        function createParticles(teamColor) {
+            particlesContainer.innerHTML = '';
+            var colors = [teamColor, '#ffd700', '#ffffff', teamColor];
+
+            for (var i = 0; i < 100; i++) {
+                var particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.animationDelay = Math.random() * 2 + 's';
+                particle.style.animationDuration = (1.5 + Math.random()) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Show goal splash
+        function showGoal(data) {
+            var isHome = data.team === 'home';
+
+            // Update team class
+            goalSplash.className = 'goal-splash active ' + (isHome ? 'home' : 'away');
+
+            // Update logo
+            document.getElementById('logoImg').src = '../Logos/' + (isHome ? 'home' : 'away') + '.svg';
+
+            // Update scorer info
+            document.getElementById('scorerNumber').textContent = '#' + (data.number || '00');
+            document.getElementById('scorerName').textContent = data.name || 'GOAL SCORER';
+
+            // Update assists
+            var assists = data.assists || [];
+            document.getElementById('assists').textContent = assists.length > 0 ? assists.join(', ') : 'Unassisted';
+
+            // Update time
+            document.getElementById('goalTime').textContent =
+                (data.period || '1ST') + ' - ' + (data.time || '00:00');
+
+            // Create particles with team color
+            var teamColor = isHome ?
+                getComputedStyle(document.documentElement).getPropertyValue('--home-primary') :
+                getComputedStyle(document.documentElement).getPropertyValue('--away-primary');
+            createParticles(teamColor.trim() || (isHome ? '#1b6eb8' : '#aa0000'));
+
+            // Auto-hide after duration
+            if (data.duration) {
+                setTimeout(hideGoal, data.duration);
+            }
+        }
+
+        // Hide goal splash
+        function hideGoal() {
+            goalSplash.classList.remove('active');
+            goalSplash.classList.add('hiding');
+            setTimeout(function() {
+                goalSplash.className = 'goal-splash';
+            }, 500);
+        }
+
+        // Socket events
+        socket.on('goal', showGoal);
+        socket.on('hide_goal', hideGoal);
+
+        // Manual trigger via postMessage
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'goal') {
+                showGoal(event.data.data);
+            } else if (event.data && event.data.type === 'hide_goal') {
+                hideGoal();
+            } else if (event.data && event.data.type === 'team_config') {
+                // Apply team colors
+                var config = event.data.data;
+                var root = document.documentElement;
+                if (config.home) {
+                    if (config.home.primary_color) root.style.setProperty('--home-primary', config.home.primary_color);
+                    if (config.home.secondary_color) root.style.setProperty('--home-secondary', config.home.secondary_color);
+                }
+                if (config.away) {
+                    if (config.away.primary_color) root.style.setProperty('--away-primary', config.away.primary_color);
+                    if (config.away.secondary_color) root.style.setProperty('--away-secondary', config.away.secondary_color);
+                }
+            }
+        });
+
+        // Demo mode - show sample goal on click
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showGoal({
+                    team: 'home',
+                    number: '87',
+                    name: 'CROSBY',
+                    assists: ['Malkin', 'Letang'],
+                    period: '2ND',
+                    time: '12:45',
+                    duration: 5000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

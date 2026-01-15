@@ -4,13 +4,14 @@
     <title>SLAP Hockey Scorebug</title>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="css/scorebug.css">
+    <script src="js/socket.io.min.js"></script>
 </head>
 <body>
     <div class="ccg-ocr">
         <div class="scorebug" id="scorebug">
             <!-- League Logo -->
             <div class="league-logo" id="leagueLogo">
-                <img src="Logos/league.png" alt="">
+                <img src="Logos/league.svg" alt="">
             </div>
             <div class="spacer"></div>
 
@@ -25,7 +26,7 @@
             <!-- Home Team -->
             <div class="team-one">
                 <div class="team-one-info">
-                    <div class="t1-logo" id="t1Logo"><img src="Logos/home.png" alt=""></div>
+                    <div class="t1-logo" id="t1Logo"><img src="Logos/home.svg" alt=""></div>
                     <div class="spacer"></div>
                     <div class="t1"><p id="t1Name" class="label">HOME</p></div>
                     <div class="spacer"></div>
@@ -44,7 +45,7 @@
                     <div class="spacer"></div>
                     <div class="t2"><p id="t2Name" class="label">AWAY</p></div>
                     <div class="spacer"></div>
-                    <div class="t2-logo" id="t2Logo"><img src="Logos/away.png" alt=""></div>
+                    <div class="t2-logo" id="t2Logo"><img src="Logos/away.svg" alt=""></div>
                 </div>
                 <div class="team-pp" id="team2-pp">
                     <div class="team-power-play">POWER PLAY <span id="t2PP">2:00</span></div>

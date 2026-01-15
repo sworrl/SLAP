@@ -17,7 +17,7 @@
     "debug": true
   },
   "simulator": {
-    "enabled": true,
+    "enabled": false,
     "period_seconds": 1200,
     "goal_interval_min": 30,
     "goal_interval_max": 90,

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Game Intro</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="game-intro" id="gameIntro">
+            <div class="matchup">
+                <div class="team home">
+                    <div class="team-logo">
+                        <img src="../Logos/home.svg" alt="" id="homeLogo">
+                    </div>
+                    <div class="team-name" id="homeTeamName">HOME TEAM</div>
+                    <div class="team-record" id="homeRecord">0-0-0</div>
+                </div>
+                <div class="vs">VS</div>
+                <div class="team away">
+                    <div class="team-logo">
+                        <img src="../Logos/away.svg" alt="" id="awayLogo">
+                    </div>
+                    <div class="team-name" id="awayTeamName">AWAY TEAM</div>
+                    <div class="team-record" id="awayRecord">0-0-0</div>
+                </div>
+            </div>
+            <div class="game-info">
+                <div class="venue" id="venue">Arena Name</div>
+                <div class="date-time" id="dateTime">Today</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var intro = document.getElementById('gameIntro');
+
+        function showIntro(data) {
+            intro.classList.add('active');
+
+            // Update team names
+            if (data.homeTeam) document.getElementById('homeTeamName').textContent = data.homeTeam;
+            if (data.awayTeam) document.getElementById('awayTeamName').textContent = data.awayTeam;
+
+            // Update records
+            if (data.homeRecord) document.getElementById('homeRecord').textContent = data.homeRecord;
+            if (data.awayRecord) document.getElementById('awayRecord').textContent = data.awayRecord;
+
+            // Update venue
+            if (data.venue) document.getElementById('venue').textContent = data.venue;
+
+            // Update date/time
+            if (data.dateTime) {
+                document.getElementById('dateTime').textContent = data.dateTime;
+            } else {
+                var now = new Date();
+                document.getElementById('dateTime').textContent = now.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+            }
+
+            // Auto-hide after duration
+            if (data.duration) {
+                setTimeout(hideIntro, data.duration);
+            }
+        }
+
+        function hideIntro() {
+            intro.classList.remove('active');
+        }
+
+        socket.on('game_intro', showIntro);
+        socket.on('hide_game_intro', hideIntro);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'game_intro') {
+                showIntro(event.data.data);
+            } else if (event.data && event.data.type === 'hide_game_intro') {
+                hideIntro();
+            } else if (event.data && event.data.type === 'team_config') {
+                var config = event.data.data;
+                if (config.home) {
+                    if (config.home.name) document.getElementById('homeTeamName').textContent = config.home.name;
+                    if (config.home.logo) document.getElementById('homeLogo').src = config.home.logo;
+                }
+                if (config.away) {
+                    if (config.away.name) document.getElementById('awayTeamName').textContent = config.away.name;
+                    if (config.away.logo) document.getElementById('awayLogo').src = config.away.logo;
+                }
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showIntro({
+                    homeTeam: 'PITTSBURGH PENGUINS',
+                    awayTeam: 'WASHINGTON CAPITALS',
+                    homeRecord: '25-15-5',
+                    awayRecord: '28-12-4',
+                    venue: 'PPG Paints Arena',
+                    duration: 8000
+                });
+            }
+        });
+    </script>
+</body>
+</html>

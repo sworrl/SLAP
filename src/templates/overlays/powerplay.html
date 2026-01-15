@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SLAP Power Play</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../css/overlays.css">
+    <script src="../js/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="overlay-canvas">
+        <div class="powerplay-graphic" id="powerplayGraphic">
+            <div class="pp-header">
+                <div class="pp-icon">⚡</div>
+                <div class="pp-text">POWER PLAY</div>
+            </div>
+            <div class="pp-advantage" id="ppAdvantage">5 on 4</div>
+            <div class="pp-time" id="ppTime">2:00</div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io();
+        var graphic = document.getElementById('powerplayGraphic');
+        var timeRemaining = 0;
+        var timerInterval = null;
+
+        function formatTime(seconds) {
+            var mins = Math.floor(seconds / 60);
+            var secs = seconds % 60;
+            return mins + ':' + (secs < 10 ? '0' : '') + secs;
+        }
+
+        function showPowerPlay(data) {
+            graphic.classList.add('active');
+
+            // Update advantage
+            var homeStrength = data.homeStrength || 5;
+            var awayStrength = data.awayStrength || 4;
+            var ppTeam = data.team || 'home';
+
+            if (ppTeam === 'home') {
+                document.getElementById('ppAdvantage').textContent = homeStrength + ' on ' + awayStrength;
+            } else {
+                document.getElementById('ppAdvantage').textContent = awayStrength + ' on ' + homeStrength;
+            }
+
+            // Set time
+            timeRemaining = data.duration || 120;
+            document.getElementById('ppTime').textContent = formatTime(timeRemaining);
+
+            // Clear existing timer
+            if (timerInterval) clearInterval(timerInterval);
+
+            // Start countdown
+            timerInterval = setInterval(function() {
+                timeRemaining--;
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    hidePowerPlay();
+                } else {
+                    document.getElementById('ppTime').textContent = formatTime(timeRemaining);
+                }
+            }, 1000);
+        }
+
+        function hidePowerPlay() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            graphic.classList.remove('active');
+        }
+
+        function updatePowerPlay(data) {
+            if (data.timeRemaining !== undefined) {
+                timeRemaining = data.timeRemaining;
+                document.getElementById('ppTime').textContent = formatTime(timeRemaining);
+            }
+            if (data.advantage) {
+                document.getElementById('ppAdvantage').textContent = data.advantage;
+            }
+        }
+
+        socket.on('power_play', showPowerPlay);
+        socket.on('hide_power_play', hidePowerPlay);
+        socket.on('update_power_play', updatePowerPlay);
+
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'power_play') {
+                showPowerPlay(event.data.data);
+            } else if (event.data && event.data.type === 'hide_power_play') {
+                hidePowerPlay();
+            } else if (event.data && event.data.type === 'update_power_play') {
+                updatePowerPlay(event.data.data);
+            }
+        });
+
+        // Demo
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'd') {
+                showPowerPlay({
+                    team: 'home',
+                    homeStrength: 5,
+                    awayStrength: 4,
+                    duration: 120
+                });
+            }
+        });
+    </script>
+</body>
+</html>

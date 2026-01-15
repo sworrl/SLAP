@@ -109,11 +109,231 @@ def create_app(config_path=None) -> Flask:
         """Scorebug preview page (standalone)."""
         return render_template("scorebug_preview.html")
 
+    @app.route("/overlay")
+    def overlay():
+        """
+        Live scorebug overlay for broadcast/streaming.
+        Use this URL in CasparCG or OBS Browser Source.
+        """
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        return send_from_directory(str(templates_dir), "scorebug.html")
+
+    @app.route("/overlay/transparent")
+    def overlay_transparent():
+        """Scorebug overlay with transparent background for OBS."""
+        templates_dir = Path(__file__).parent.parent.parent / "templates"
+        return send_from_directory(str(templates_dir), "scorebug.html")
+
     @app.route("/templates/<path:filename>")
     def serve_template(filename):
         """Serve CasparCG template files."""
         templates_dir = Path(__file__).parent.parent.parent / "templates"
         return send_from_directory(str(templates_dir), filename)
+
+    # ============ Overlay Routes ============
+
+    @app.route("/overlay/<overlay_name>")
+    def serve_overlay(overlay_name):
+        """
+        Serve individual broadcast overlays.
+        Available overlays: goal, shots, penalty, player, period, intro, goalie, powerplay, stars, replay, ticker
+        """
+        overlays_dir = Path(__file__).parent.parent.parent / "templates" / "overlays"
+        valid_overlays = ['goal', 'shots', 'penalty', 'player', 'period', 'intro', 'goalie', 'powerplay', 'stars', 'replay', 'ticker']
+
+        if overlay_name not in valid_overlays:
+            return jsonify({"error": f"Unknown overlay. Valid: {', '.join(valid_overlays)}"}), 404
+
+        return send_from_directory(str(overlays_dir), f"{overlay_name}.html")
+
+    @app.route("/api/overlays", methods=["GET"])
+    def list_overlays():
+        """List all available overlays with their URLs."""
+        config = get_config()
+        base_url = f"http://localhost:{config.web.port}"
+
+        overlays = [
+            {"name": "scorebug", "description": "Main scorebug", "url": f"{base_url}/overlay"},
+            {"name": "goal", "description": "Goal celebration splash", "url": f"{base_url}/overlay/goal"},
+            {"name": "shots", "description": "Shot on goal counter", "url": f"{base_url}/overlay/shots"},
+            {"name": "penalty", "description": "Penalty box display", "url": f"{base_url}/overlay/penalty"},
+            {"name": "player", "description": "Player card lower third", "url": f"{base_url}/overlay/player"},
+            {"name": "period", "description": "Period summary", "url": f"{base_url}/overlay/period"},
+            {"name": "intro", "description": "Game intro/matchup", "url": f"{base_url}/overlay/intro"},
+            {"name": "goalie", "description": "Goalie statistics", "url": f"{base_url}/overlay/goalie"},
+            {"name": "powerplay", "description": "Power play graphic", "url": f"{base_url}/overlay/powerplay"},
+            {"name": "stars", "description": "Three stars of the game", "url": f"{base_url}/overlay/stars"},
+            {"name": "replay", "description": "Replay bug indicator", "url": f"{base_url}/overlay/replay"},
+            {"name": "ticker", "description": "Scores ticker/crawl", "url": f"{base_url}/overlay/ticker"},
+        ]
+        return jsonify({"overlays": overlays})
+
+    # ============ Overlay Control API ============
+
+    @app.route("/api/overlay/goal", methods=["POST"])
+    def trigger_goal_splash():
+        """Trigger goal splash overlay."""
+        data = request.get_json() or {}
+
+        goal_data = {
+            "team": data.get("team", "home"),
+            "number": data.get("number", "00"),
+            "name": data.get("name", "GOAL SCORER"),
+            "assists": data.get("assists", []),
+            "period": data.get("period", state.game.period),
+            "time": data.get("time", state.game.clock),
+            "duration": data.get("duration", 5000)
+        }
+
+        socketio.emit("goal", goal_data)
+        return jsonify({"status": "ok", "data": goal_data})
+
+    @app.route("/api/overlay/goal/hide", methods=["POST"])
+    def hide_goal_splash():
+        """Hide goal splash overlay."""
+        socketio.emit("hide_goal")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/shots", methods=["POST"])
+    def update_shots():
+        """Update shot counter."""
+        data = request.get_json() or {}
+        socketio.emit("shots", data)
+        return jsonify({"status": "ok", "data": data})
+
+    @app.route("/api/overlay/penalty", methods=["POST"])
+    def update_penalties():
+        """Update penalty box display."""
+        data = request.get_json() or {}
+        socketio.emit("penalties", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/penalty/add", methods=["POST"])
+    def add_overlay_penalty():
+        """Add a penalty to the penalty box."""
+        data = request.get_json() or {}
+        socketio.emit("add_penalty", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/player", methods=["POST"])
+    def show_player_card():
+        """Show player card overlay."""
+        data = request.get_json() or {}
+        socketio.emit("show_player", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/player/hide", methods=["POST"])
+    def hide_player_card():
+        """Hide player card overlay."""
+        socketio.emit("hide_player")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/period", methods=["POST"])
+    def show_period_summary():
+        """Show period summary overlay."""
+        data = request.get_json() or {}
+
+        # Fill in current game data if not provided
+        if "homeScore" not in data:
+            data["homeScore"] = state.game.home_score
+        if "awayScore" not in data:
+            data["awayScore"] = state.game.away_score
+        if "period" not in data:
+            data["period"] = state.game.period
+
+        socketio.emit("period_summary", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/period/hide", methods=["POST"])
+    def hide_period_summary():
+        """Hide period summary overlay."""
+        socketio.emit("hide_period_summary")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/intro", methods=["POST"])
+    def show_game_intro():
+        """Show game intro overlay."""
+        data = request.get_json() or {}
+        socketio.emit("game_intro", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/intro/hide", methods=["POST"])
+    def hide_game_intro():
+        """Hide game intro overlay."""
+        socketio.emit("hide_game_intro")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/goalie", methods=["POST"])
+    def show_goalie_stats():
+        """Show goalie stats overlay."""
+        data = request.get_json() or {}
+        socketio.emit("show_goalie", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/goalie/hide", methods=["POST"])
+    def hide_goalie_stats():
+        """Hide goalie stats overlay."""
+        socketio.emit("hide_goalie")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/powerplay", methods=["POST"])
+    def show_powerplay():
+        """Show power play overlay."""
+        data = request.get_json() or {}
+        socketio.emit("power_play", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/powerplay/hide", methods=["POST"])
+    def hide_powerplay():
+        """Hide power play overlay."""
+        socketio.emit("hide_power_play")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/stars", methods=["POST"])
+    def show_three_stars():
+        """Show three stars overlay."""
+        data = request.get_json() or {}
+        socketio.emit("three_stars", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/stars/hide", methods=["POST"])
+    def hide_three_stars():
+        """Hide three stars overlay."""
+        socketio.emit("hide_three_stars")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/replay", methods=["POST"])
+    def show_replay():
+        """Show replay bug."""
+        data = request.get_json() or {}
+        socketio.emit("replay", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/replay/hide", methods=["POST"])
+    def hide_replay():
+        """Hide replay bug."""
+        socketio.emit("hide_replay")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/ticker", methods=["POST"])
+    def show_ticker():
+        """Show scores ticker."""
+        data = request.get_json() or {}
+        socketio.emit("ticker", data)
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/ticker/hide", methods=["POST"])
+    def hide_ticker():
+        """Hide scores ticker."""
+        socketio.emit("hide_ticker")
+        return jsonify({"status": "ok"})
+
+    @app.route("/api/overlay/ticker/update", methods=["POST"])
+    def update_ticker():
+        """Update ticker scores."""
+        data = request.get_json() or {}
+        socketio.emit("update_ticker", data)
+        return jsonify({"status": "ok"})
 
     # ============ API Routes ============
 
@@ -843,6 +1063,336 @@ def create_app(config_path=None) -> Flask:
             return jsonify({"status": "ok"})
         else:
             return jsonify({"error": "Failed to refresh scorebug"}), 500
+
+    # ============ Team Configuration API ============
+
+    @app.route("/api/teams", methods=["GET"])
+    def get_teams():
+        """Get team configuration."""
+        config = get_config()
+        return jsonify({
+            "home": {
+                "name": getattr(config, 'home_team', {}).get('name', 'HOME') if isinstance(getattr(config, 'home_team', {}), dict) else config.home_team.name if hasattr(config, 'home_team') else 'HOME',
+                "short_name": getattr(config, 'home_team', {}).get('short_name', 'HOM') if isinstance(getattr(config, 'home_team', {}), dict) else config.home_team.short_name if hasattr(config, 'home_team') else 'HOM',
+                "logo": getattr(config, 'home_team', {}).get('logo', 'home.png') if isinstance(getattr(config, 'home_team', {}), dict) else config.home_team.logo if hasattr(config, 'home_team') else 'home.png',
+                "primary_color": getattr(config, 'home_team', {}).get('color', '#1b6eb8') if isinstance(getattr(config, 'home_team', {}), dict) else config.home_team.color if hasattr(config, 'home_team') else '#1b6eb8',
+                "secondary_color": getattr(config, 'home_team', {}).get('secondary_color', '#00529c') if isinstance(getattr(config, 'home_team', {}), dict) else getattr(config.home_team, 'secondary_color', '#00529c') if hasattr(config, 'home_team') else '#00529c',
+            },
+            "away": {
+                "name": getattr(config, 'away_team', {}).get('name', 'AWAY') if isinstance(getattr(config, 'away_team', {}), dict) else config.away_team.name if hasattr(config, 'away_team') else 'AWAY',
+                "short_name": getattr(config, 'away_team', {}).get('short_name', 'AWY') if isinstance(getattr(config, 'away_team', {}), dict) else config.away_team.short_name if hasattr(config, 'away_team') else 'AWY',
+                "logo": getattr(config, 'away_team', {}).get('logo', 'away.png') if isinstance(getattr(config, 'away_team', {}), dict) else config.away_team.logo if hasattr(config, 'away_team') else 'away.png',
+                "primary_color": getattr(config, 'away_team', {}).get('color', '#aa0000') if isinstance(getattr(config, 'away_team', {}), dict) else config.away_team.color if hasattr(config, 'away_team') else '#aa0000',
+                "secondary_color": getattr(config, 'away_team', {}).get('secondary_color', '#780000') if isinstance(getattr(config, 'away_team', {}), dict) else getattr(config.away_team, 'secondary_color', '#780000') if hasattr(config, 'away_team') else '#780000',
+            }
+        })
+
+    @app.route("/api/teams", methods=["POST"])
+    def update_teams():
+        """Update team configuration."""
+        data = request.get_json() or {}
+        config = get_config()
+
+        # Update home team
+        if "home" in data:
+            home = data["home"]
+            if hasattr(config, 'home_team'):
+                if isinstance(config.home_team, dict):
+                    config.home_team.update(home)
+                else:
+                    for key, value in home.items():
+                        setattr(config.home_team, key, value)
+
+        # Update away team
+        if "away" in data:
+            away = data["away"]
+            if hasattr(config, 'away_team'):
+                if isinstance(config.away_team, dict):
+                    config.away_team.update(away)
+                else:
+                    for key, value in away.items():
+                        setattr(config.away_team, key, value)
+
+        # Broadcast update to all clients
+        socketio.emit('teams_update', data)
+
+        return jsonify({"status": "ok", "message": "Teams updated"})
+
+    @app.route("/api/teams/logos", methods=["GET"])
+    def list_logos():
+        """List available logo files."""
+        logos_dir = Path(__file__).parent.parent.parent / "templates" / "Logos"
+        logos = []
+        if logos_dir.exists():
+            for f in logos_dir.iterdir():
+                if f.suffix.lower() in ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp']:
+                    logos.append(f.name)
+        return jsonify({"logos": sorted(logos)})
+
+    @app.route("/api/teams/logo/upload", methods=["POST"])
+    def upload_logo():
+        """Upload a team logo."""
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+
+        # Validate file type
+        allowed_extensions = {'.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp'}
+        ext = Path(file.filename).suffix.lower()
+        if ext not in allowed_extensions:
+            return jsonify({"error": f"Invalid file type. Allowed: {', '.join(allowed_extensions)}"}), 400
+
+        # Save file
+        logos_dir = Path(__file__).parent.parent.parent / "templates" / "Logos"
+        logos_dir.mkdir(parents=True, exist_ok=True)
+
+        # Use provided name or original filename
+        filename = request.form.get('name', file.filename)
+        if not Path(filename).suffix:
+            filename += ext
+
+        filepath = logos_dir / filename
+        file.save(str(filepath))
+
+        return jsonify({"status": "ok", "filename": filename, "path": f"Logos/{filename}"})
+
+    # ============ Serial Port API ============
+
+    @app.route("/api/serial/ports", methods=["GET"])
+    def serial_list_ports():
+        """List available serial ports."""
+        import serial.tools.list_ports
+        ports = []
+        for port in serial.tools.list_ports.comports():
+            ports.append({
+                "device": port.device,
+                "description": port.description,
+                "hwid": port.hwid
+            })
+        return jsonify({"ports": ports})
+
+    @app.route("/api/serial/status", methods=["GET"])
+    def serial_status():
+        """Get current serial port status."""
+        config = get_config()
+        return jsonify({
+            "configured_port": config.serial.port,
+            "baudrate": config.serial.baudrate,
+            "connected": state.serial_connected,
+            "simulator_mode": config.simulator.enabled
+        })
+
+    @app.route("/api/serial/config", methods=["POST"])
+    def serial_config():
+        """Configure serial port settings."""
+        data = request.get_json() or {}
+        config = get_config()
+
+        if "port" in data:
+            config.serial.port = data["port"]
+        if "baudrate" in data:
+            config.serial.baudrate = int(data["baudrate"])
+
+        return jsonify({
+            "status": "ok",
+            "port": config.serial.port,
+            "baudrate": config.serial.baudrate,
+            "message": "Config updated. Restart SLAP to apply changes."
+        })
+
+    # ============ Roster Management API ============
+
+    def get_roster_path():
+        """Get the roster file path."""
+        return Path(__file__).parent.parent.parent / "config" / "roster.json"
+
+    def load_roster():
+        """Load roster from JSON file."""
+        roster_path = get_roster_path()
+        if roster_path.exists():
+            try:
+                with open(roster_path, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load roster: {e}")
+        return {"home": {"players": []}, "away": {"players": []}}
+
+    def save_roster(roster):
+        """Save roster to JSON file."""
+        roster_path = get_roster_path()
+        roster_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with open(roster_path, 'w') as f:
+                json.dump(roster, f, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save roster: {e}")
+            return False
+
+    @app.route("/api/roster", methods=["GET"])
+    def get_all_rosters():
+        """Get all team rosters."""
+        return jsonify(load_roster())
+
+    @app.route("/api/roster/<team>", methods=["GET"])
+    def get_team_roster(team):
+        """Get roster for a specific team (home/away)."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        roster = load_roster()
+        return jsonify(roster.get(team, {"players": []}))
+
+    @app.route("/api/roster/<team>", methods=["POST"])
+    def update_team_roster(team):
+        """Replace entire roster for a team."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        roster = load_roster()
+        roster[team] = data
+
+        if save_roster(roster):
+            socketio.emit("roster_update", {team: data})
+            return jsonify({"status": "ok", "message": f"{team.title()} roster updated"})
+        else:
+            return jsonify({"error": "Failed to save roster"}), 500
+
+    @app.route("/api/roster/<team>/player", methods=["POST"])
+    def add_player(team):
+        """Add or update a player in the roster."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        data = request.get_json()
+        if not data or "number" not in data:
+            return jsonify({"error": "Player number is required"}), 400
+
+        roster = load_roster()
+        players = roster.get(team, {}).get("players", [])
+
+        # Create player object
+        player = {
+            "number": str(data.get("number", "0")),
+            "name": data.get("name", "PLAYER").upper(),
+            "position": data.get("position", "F").upper(),
+            "goals": data.get("goals", 0),
+            "assists": data.get("assists", 0)
+        }
+
+        # Check if player with this number exists
+        found = False
+        for i, p in enumerate(players):
+            if p["number"] == player["number"]:
+                players[i] = player
+                found = True
+                break
+
+        if not found:
+            players.append(player)
+
+        # Sort by number
+        players.sort(key=lambda x: int(x["number"]) if x["number"].isdigit() else 999)
+
+        roster[team]["players"] = players
+
+        if save_roster(roster):
+            socketio.emit("roster_update", {team: roster[team]})
+            return jsonify({"status": "ok", "player": player})
+        else:
+            return jsonify({"error": "Failed to save roster"}), 500
+
+    @app.route("/api/roster/<team>/player/<number>", methods=["DELETE"])
+    def remove_player(team, number):
+        """Remove a player from the roster."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        roster = load_roster()
+        players = roster.get(team, {}).get("players", [])
+
+        # Find and remove player
+        original_len = len(players)
+        players = [p for p in players if p["number"] != str(number)]
+
+        if len(players) == original_len:
+            return jsonify({"error": f"Player #{number} not found"}), 404
+
+        roster[team]["players"] = players
+
+        if save_roster(roster):
+            socketio.emit("roster_update", {team: roster[team]})
+            return jsonify({"status": "ok", "message": f"Player #{number} removed"})
+        else:
+            return jsonify({"error": "Failed to save roster"}), 500
+
+    @app.route("/api/roster/<team>/player/<number>", methods=["GET"])
+    def get_player(team, number):
+        """Get a specific player by number."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        roster = load_roster()
+        players = roster.get(team, {}).get("players", [])
+
+        for player in players:
+            if player["number"] == str(number):
+                return jsonify(player)
+
+        return jsonify({"error": f"Player #{number} not found"}), 404
+
+    @app.route("/api/roster/<team>/player/<number>/stats", methods=["POST"])
+    def update_player_stats(team, number):
+        """Update a player's game stats."""
+        if team not in ("home", "away"):
+            return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
+
+        data = request.get_json() or {}
+        roster = load_roster()
+        players = roster.get(team, {}).get("players", [])
+
+        for i, player in enumerate(players):
+            if player["number"] == str(number):
+                if "goals" in data:
+                    players[i]["goals"] = data["goals"]
+                if "assists" in data:
+                    players[i]["assists"] = data["assists"]
+                if "add_goal" in data:
+                    players[i]["goals"] = players[i].get("goals", 0) + 1
+                if "add_assist" in data:
+                    players[i]["assists"] = players[i].get("assists", 0) + 1
+
+                roster[team]["players"] = players
+                if save_roster(roster):
+                    socketio.emit("roster_update", {team: roster[team]})
+                    return jsonify({"status": "ok", "player": players[i]})
+                else:
+                    return jsonify({"error": "Failed to save roster"}), 500
+
+        return jsonify({"error": f"Player #{number} not found"}), 404
+
+    @app.route("/api/roster/reset", methods=["POST"])
+    def reset_roster_stats():
+        """Reset all player stats to zero (new game)."""
+        roster = load_roster()
+
+        for team in ["home", "away"]:
+            for player in roster.get(team, {}).get("players", []):
+                player["goals"] = 0
+                player["assists"] = 0
+
+        if save_roster(roster):
+            socketio.emit("roster_update", roster)
+            return jsonify({"status": "ok", "message": "All stats reset to zero"})
+        else:
+            return jsonify({"error": "Failed to save roster"}), 500
 
     # ============ WebSocket Events ============
 
