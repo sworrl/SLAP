@@ -1,8 +1,7 @@
 <p align="center">
-  <img src="src/img/SLAP_icon.png" alt="SLAP Logo" width="180" height="180">
+  <img src="src/img/SLAP_icon.png" alt="SLAP Logo" width="200" height="200">
 </p>
 
-<h1 align="center">🏒 SLAP</h1>
 <h3 align="center">Scoreboard Live Automation Platform</h3>
 
 <p align="center">
@@ -202,11 +201,7 @@ chmod +x deploy.py
 ### 🟢 Core Features (Tested)
 | Feature | Description |
 |---------|-------------|
-| 📡 **Real-time Capture** | Reads data from MP-70 controllers via RS-232 serial |
 | 🖥️ **Web Dashboard** | Control panel with live scorebug preview |
-| 🎨 **Team Customization** | Logos, colors, and names configurable via web UI |
-| ⚡ **Serial Configuration** | Hot-swap serial settings via web UI |
-| 🔄 **Preview/Live Modes** | Test without hardware, switch to live when ready |
 | 🎮 **Simulation Mode** | Full game simulation for testing |
 | 📦 **Local Dependencies** | All JavaScript libraries hosted locally (no CDN) |
 
@@ -218,6 +213,10 @@ chmod +x deploy.py
 ### 🟡 Extended Features (Implemented, Untested)
 | Feature | Description |
 |---------|-------------|
+| 📡 **Real-time Capture** | Reads data from MP-70 controllers via RS-232 serial |
+| 🎨 **Team Customization** | Logos, colors, and names configurable via web UI |
+| ⚡ **Serial Configuration** | Hot-swap serial settings via web UI |
+| 🔄 **Preview/Live Modes** | Test without hardware, switch to live when ready |
 | 🎬 **CasparCG Integration** | Sends live updates to broadcast graphics server |
 | 📺 **OBS Studio Integration** | WebSocket control for streaming/recording |
 | 🏒 **NHL-style Overlays** | Full suite of 12+ professional broadcast graphics |
@@ -952,13 +951,9 @@ sudo usermod -a -G dialout $USER
 <td width="50%">
 
 ### ✅ Completed & Tested
-<img src="https://img.shields.io/badge/7_Features-Production%20Ready-success?style=flat-square" alt="7 Tested">
+<img src="https://img.shields.io/badge/3_Features-Production%20Ready-success?style=flat-square" alt="3 Tested">
 
-- [x] Core scorebug template with animations
-- [x] RS-232 serial parser for MP-70
 - [x] Web dashboard with live preview
-- [x] Team customization (logos, colors, names)
-- [x] Serial port configuration via web UI
 - [x] Local JavaScript hosting (no CDN)
 - [x] Simulation mode
 
@@ -966,8 +961,13 @@ sudo usermod -a -G dialout $USER
 <td width="50%">
 
 ### 🟡 Completed (Needs Testing)
-<img src="https://img.shields.io/badge/15_Features-Awaiting%20Testing-yellow?style=flat-square" alt="15 Untested">
+<img src="https://img.shields.io/badge/19_Features-Awaiting%20Testing-yellow?style=flat-square" alt="19 Untested">
 
+- [x] Core scorebug template with animations
+- [x] RS-232 serial parser for MP-70
+- [x] Team customization (logos, colors, names)
+- [x] Serial port configuration via web UI
+- [x] Preview/Live mode switching
 - [x] CasparCG AMCP client integration
 - [x] OBS WebSocket integration
 - [x] Goal Splash overlay
@@ -1040,11 +1040,10 @@ See the [LICENSE](LICENSE) file for details.
 </p>
 
 <p align="center">
-  <strong>🏒 SLAP</strong><br>
   <em>Scoreboard Live Automation Platform</em><br>
-  Built for hockey broadcast professionals
+  Built for hockey broadcast professionals 🏒
 </p>
 
 <p align="center">
-  <a href="#-slap">⬆️ Back to Top</a>
+  <a href="#scoreboard-live-automation-platform">⬆️ Back to Top</a>
 </p>
