@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="src/img/SLAP_icon.png" alt="SLAP Logo" width="200" height="200">
+  <img src="src/slap/web/static/img/SLAP_icon.webp" alt="SLAP Logo" width="200" height="200">
 </p>
 
 <h3 align="center">Scoreboard Live Automation Platform</h3>
