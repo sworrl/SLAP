@@ -1,80 +1,97 @@
 <p align="center">
-  <img src="src/templates/Logos/league.svg" alt="SLAP Logo" width="120" height="120">
+  <img src="src/img/SLAP_icon.png" alt="SLAP Logo" width="180" height="180">
 </p>
 
-<h1 align="center">SLAP</h1>
+<h1 align="center">🏒 SLAP</h1>
 <h3 align="center">Scoreboard Live Automation Platform</h3>
 
 <p align="center">
-  <strong>Professional broadcast graphics for hockey powered by real-time scoreboard data</strong>
+  <em>Professional broadcast graphics for hockey powered by real-time scoreboard data</em>
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#features">Features</a> •
-  <a href="#broadcast-overlays">Overlays</a> •
-  <a href="#api-reference">API</a> •
-  <a href="#license">License</a>
+  <a href="#-quick-start">🚀 Quick Start</a> •
+  <a href="#-features">✨ Features</a> •
+  <a href="#-broadcast-overlays">📺 Overlays</a> •
+  <a href="#-api-reference">🔌 API</a> •
+  <a href="#-license">📄 License</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/python-3.8+-blue.svg" alt="Python 3.8+">
-  <img src="https://img.shields.io/badge/license-GPL--3.0-green.svg" alt="GPL-3.0">
-  <img src="https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg" alt="Platform">
+  <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
+  <img src="https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge" alt="GPL-3.0">
+  <img src="https://img.shields.io/badge/CasparCG-Ready-orange?style=for-the-badge" alt="CasparCG">
+  <img src="https://img.shields.io/badge/OBS-Compatible-purple?style=for-the-badge&logo=obsstudio&logoColor=white" alt="OBS">
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Status-Active%20Development-brightgreen?style=flat-square" alt="Status">
+  <img src="https://img.shields.io/badge/PRs-Welcome-ff69b4?style=flat-square" alt="PRs Welcome">
 </p>
 
 ---
 
-## Table of Contents
+## 📑 Table of Contents
 
-- [Overview](#overview)
+<details>
+<summary>Click to expand</summary>
+
+- [🎯 Overview](#-overview)
   - [System Architecture](#system-architecture)
-  - [Multi-Machine Setup](#multi-machine-setup)
-- [Quick Start](#quick-start)
-- [Features](#features)
-- [Broadcast Overlays](#broadcast-overlays)
+  - [Multi-Machine Setup](#multi-machine-setup-recommended)
+- [🚀 Quick Start](#-quick-start)
+- [✨ Features](#-features)
+- [📺 Broadcast Overlays](#-broadcast-overlays)
   - [Overlay URLs](#overlay-urls)
   - [Using with CasparCG](#using-with-casparcg)
   - [Using with OBS](#using-with-obs)
-- [Installation](#installation)
+- [📦 Installation](#-installation)
   - [Prerequisites](#prerequisites)
   - [Install Steps](#install-steps)
   - [Commands](#commands)
-- [Hardware Setup](#hardware-setup)
+- [🔧 Hardware Setup](#-hardware-setup)
   - [Required Equipment](#required-equipment)
   - [MP-70 Configuration](#mp-70-configuration)
   - [Finding Your Serial Port](#finding-your-serial-port)
-- [Configuration](#configuration)
+- [⚙️ Configuration](#️-configuration)
   - [Config File](#config-file)
   - [Serial Settings](#serial-settings)
   - [CasparCG Settings](#casparcg-settings)
-- [Web Dashboard](#web-dashboard)
+- [🖥️ Web Dashboard](#️-web-dashboard)
   - [Game Control](#game-control)
   - [Broadcast Overlays Control](#broadcast-overlays-control)
   - [Team Management](#team-management)
   - [System Control](#system-control)
-- [API Reference](#api-reference)
+- [🔌 API Reference](#-api-reference)
   - [REST API](#rest-api)
   - [WebSocket Events](#websocket-events)
   - [Code Examples](#code-examples)
-- [CasparCG Integration](#casparcg-integration)
+- [🎬 CasparCG Integration](#-casparcg-integration)
   - [Installing CasparCG](#installing-casparcg)
   - [AMCP Commands](#amcp-commands)
-- [MP-70 Protocol](#mp-70-protocol)
+- [📡 MP-70 Protocol](#-mp-70-protocol)
   - [Serial Configuration](#serial-configuration)
   - [Packet Structure](#packet-structure)
   - [Packet Types](#packet-types)
   - [Protocol Capture](#protocol-capture)
-- [Project Structure](#project-structure)
-- [Troubleshooting](#troubleshooting)
-- [Development TODO](#development-todo)
-- [License](#license)
+- [📁 Project Structure](#-project-structure)
+- [🔍 Troubleshooting](#-troubleshooting)
+- [📋 Development TODO](#-development-todo)
+- [📄 License](#-license)
+
+</details>
 
 ---
 
-## Overview
+## 🎯 Overview
 
-SLAP captures real-time game data from Trans-Lux FairPlay MP-70 scoreboard controllers and generates professional NHL-style broadcast graphics via CasparCG or OBS Studio.
+> **SLAP** captures real-time game data from Trans-Lux FairPlay MP-70 scoreboard controllers and generates professional NHL-style broadcast graphics via CasparCG or OBS Studio.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/📊_Real--Time-Data%20Capture-blue?style=flat-square" alt="Real-Time">
+  <img src="https://img.shields.io/badge/🎨_NHL--Style-Graphics-red?style=flat-square" alt="NHL-Style">
+  <img src="https://img.shields.io/badge/🔄_Live-Updates-green?style=flat-square" alt="Live Updates">
+</p>
 
 ### System Architecture
 
@@ -117,7 +134,7 @@ SLAP captures real-time game data from Trans-Lux FairPlay MP-70 scoreboard contr
 6. **CasparCG** renders HTML/CSS/JS templates with live data
 7. **Web Dashboard** provides real-time monitoring and manual override control
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ### Multi-Machine Setup (Recommended)
 
@@ -144,71 +161,97 @@ OBS Machine (powerful workstation):
 - **OBS stays separate** for compositing only
 - **Serial port** directly connected to graphics machine
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
+
+> [!TIP]
+> Try demo mode first to see SLAP in action without any hardware!
 
 ```bash
+# Make deploy script executable (first time only)
+chmod +x deploy.py
+
 # Install
-python deploy.py install
+./deploy.py install
 
 # Start in demo mode (fake game data for testing)
-python deploy.py start --simulate
+./deploy.py start --simulate
 
 # Or start in live mode (reads from serial port)
-python deploy.py start
+./deploy.py start
 
 # Open in browser
 # http://localhost:9876
 ```
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+> **Note:** The deploy script includes a shebang (`#!/usr/bin/env python3`) so you can run it directly with `./deploy.py` instead of `python deploy.py`. Both work.
+
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Features
+## ✨ Features
 
+<table>
+<tr>
+<td>
+
+### 🟢 Core Features (Tested)
 | Feature | Description |
 |---------|-------------|
-| **Real-time Capture** | Reads data from MP-70 controllers via RS-232 serial |
-| **CasparCG Integration** | Sends live updates to broadcast graphics server |
-| **OBS Studio Integration** | WebSocket control for streaming/recording |
-| **NHL-style Overlays** | Full suite of 12+ professional broadcast graphics |
-| **Web Dashboard** | Control panel with live scorebug preview |
-| **Team Roster Manager** | Store player names/numbers for quick overlay insertion |
-| **Team Customization** | Logos, colors, and names configurable via web UI |
-| **Serial Configuration** | Hot-swap serial settings via web UI |
-| **Preview/Live Modes** | Test without hardware, switch to live when ready |
-| **Simulation Mode** | Full game simulation for testing |
-| **Local Dependencies** | All JavaScript libraries hosted locally (no CDN) |
-| **Stream Deck Support** | REST API designed for hardware control surfaces |
+| 📡 **Real-time Capture** | Reads data from MP-70 controllers via RS-232 serial |
+| 🖥️ **Web Dashboard** | Control panel with live scorebug preview |
+| 🎨 **Team Customization** | Logos, colors, and names configurable via web UI |
+| ⚡ **Serial Configuration** | Hot-swap serial settings via web UI |
+| 🔄 **Preview/Live Modes** | Test without hardware, switch to live when ready |
+| 🎮 **Simulation Mode** | Full game simulation for testing |
+| 📦 **Local Dependencies** | All JavaScript libraries hosted locally (no CDN) |
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+</td>
+</tr>
+<tr>
+<td>
+
+### 🟡 Extended Features (Implemented, Untested)
+| Feature | Description |
+|---------|-------------|
+| 🎬 **CasparCG Integration** | Sends live updates to broadcast graphics server |
+| 📺 **OBS Studio Integration** | WebSocket control for streaming/recording |
+| 🏒 **NHL-style Overlays** | Full suite of 12+ professional broadcast graphics |
+| 👥 **Team Roster Manager** | Store player names/numbers for quick overlay insertion |
+| 🎛️ **Stream Deck Support** | REST API designed for hardware control surfaces |
+
+</td>
+</tr>
+</table>
+
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Broadcast Overlays
+## 📺 Broadcast Overlays
 
-SLAP includes a full suite of NHL-style broadcast overlays, all controllable via the web dashboard or API.
+> SLAP includes a full suite of **NHL-style broadcast overlays**, all controllable via the web dashboard or API.
 
-### Overlay URLs
+### 🎨 Overlay URLs
 
 | Overlay | URL | Description |
-|---------|-----|-------------|
-| **Scorebug** | `/overlay` | Main game scorebug with scores, clock, period |
-| **Goal Splash** | `/overlay/goal` | Full-screen goal celebration with confetti |
-| **Shot Counter** | `/overlay/shots` | Shots on goal tracker |
-| **Penalty Box** | `/overlay/penalty` | Detailed penalty info display |
-| **Player Card** | `/overlay/player` | Lower third player spotlight |
-| **Period Summary** | `/overlay/period` | End-of-period stats summary |
-| **Game Intro** | `/overlay/intro` | Pre-game matchup graphic |
-| **Goalie Stats** | `/overlay/goalie` | Goalie performance display |
-| **Power Play** | `/overlay/powerplay` | Power play countdown graphic |
-| **Three Stars** | `/overlay/stars` | Post-game three stars of the game |
-| **Replay Bug** | `/overlay/replay` | Flashing replay indicator |
-| **Ticker** | `/overlay/ticker` | Scrolling scores crawl |
+|:--------|:----|:------------|
+| 🏒 **Scorebug** | `/overlay` | Main game scorebug with scores, clock, period |
+| 🚨 **Goal Splash** | `/overlay/goal` | Full-screen goal celebration with confetti |
+| 🎯 **Shot Counter** | `/overlay/shots` | Shots on goal tracker |
+| ⏱️ **Penalty Box** | `/overlay/penalty` | Detailed penalty info display |
+| 👤 **Player Card** | `/overlay/player` | Lower third player spotlight |
+| 📊 **Period Summary** | `/overlay/period` | End-of-period stats summary |
+| 🎬 **Game Intro** | `/overlay/intro` | Pre-game matchup graphic |
+| 🥅 **Goalie Stats** | `/overlay/goalie` | Goalie performance display |
+| ⚡ **Power Play** | `/overlay/powerplay` | Power play countdown graphic |
+| ⭐ **Three Stars** | `/overlay/stars` | Post-game three stars of the game |
+| 🔁 **Replay Bug** | `/overlay/replay` | Flashing replay indicator |
+| 📰 **Ticker** | `/overlay/ticker` | Scrolling scores crawl |
 
 ### Using with CasparCG
 
@@ -229,11 +272,11 @@ Add as Browser Source:
 
 All overlays respond to Socket.IO events for real-time triggering.
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Installation
+## 📦 Installation
 
 ### Prerequisites
 
@@ -247,8 +290,11 @@ All overlays respond to Socket.IO events for real-time triggering.
 git clone https://github.com/sworrl/SLAP.git
 cd SLAP
 
+# Make deploy script executable
+chmod +x deploy.py
+
 # Run the install script
-python deploy.py install
+./deploy.py install
 ```
 
 The deploy script handles:
@@ -260,30 +306,33 @@ The deploy script handles:
 
 | Command | Description |
 |---------|-------------|
-| `python deploy.py install` | Install SLAP and dependencies |
-| `python deploy.py start` | Start SLAP server |
-| `python deploy.py stop` | Stop SLAP server |
-| `python deploy.py restart` | Restart SLAP server |
-| `python deploy.py status` | Check if running |
-| `python deploy.py logs` | Show logs (`-f` to follow) |
-| `python deploy.py update` | Update/reinstall dependencies |
-| `python deploy.py uninstall` | Remove installation |
+| `./deploy.py install` | Install SLAP and dependencies |
+| `./deploy.py start` | Start SLAP server |
+| `./deploy.py stop` | Stop SLAP server |
+| `./deploy.py restart` | Restart SLAP server |
+| `./deploy.py status` | Check if running |
+| `./deploy.py logs` | Show logs (`-f` to follow) |
+| `./deploy.py update` | Update/reinstall dependencies |
+| `./deploy.py uninstall` | Remove installation |
 
 #### Start Options
 
 ```bash
-python deploy.py start                        # Live mode (default)
-python deploy.py start --simulate             # Demo mode (fake data)
-python deploy.py start --port 9876            # Custom port
-python deploy.py start --debug                # Debug logging
-python deploy.py start --serial /dev/ttyUSB0  # Specify serial port
+./deploy.py start                        # Live mode (default)
+./deploy.py start --simulate             # Demo mode (fake data)
+./deploy.py start --port 9876            # Custom port
+./deploy.py start --debug                # Debug logging
+./deploy.py start --serial /dev/ttyUSB0  # Specify serial port (also configurable in Web UI)
 ```
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Hardware Setup
+## 🔧 Hardware Setup
+
+> [!NOTE]
+> SLAP works in simulation mode without any hardware. Only need this for live games!
 
 ### Required Equipment
 
@@ -324,11 +373,11 @@ ls /dev/tty.usb*
 - Look under "Ports (COM & LPT)"
 - Usually COM3 or COM4
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 ### Config File
 
@@ -369,15 +418,15 @@ Edit `src/config/default.json`:
 | `port` | AMCP port (default: 5250) |
 | `enabled` | Set to `false` to disable CasparCG |
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Web Dashboard
+## 🖥️ Web Dashboard
 
-The dashboard at `http://localhost:9876` provides full control over SLAP.
+> The dashboard at `http://localhost:9876` provides **full control** over SLAP.
 
-### Game Control
+### 🎮 Game Control
 
 - **Live scorebug preview** - See exactly what appears on broadcast
 - **Preview/Live toggle** - Switch between simulation and real hardware
@@ -386,39 +435,41 @@ The dashboard at `http://localhost:9876` provides full control over SLAP.
 - **Clock controls** - Set period and game time
 - **Penalty controls** - Add 2-minute or 5-minute penalties
 
-### Broadcast Overlays Control
+### 📺 Broadcast Overlays Control
 
-- **Goal Splash** - Trigger home/away goal celebrations
-- **Replay Bug** - Show/hide replay indicator
-- **Player Card** - Display player lower thirds with roster lookup
-- **Goalie Stats** - Show goalie save percentages
-- **Period Summary** - End of period stats
-- **Game Intro** - Pre-game matchup graphic
-- **Three Stars** - Post-game honors
-- **Power Play** - Enhanced PP graphic
-- **Shot Counter** - Update SOG display
-- **Ticker** - League scores crawl
+- 🚨 **Goal Splash** - Trigger home/away goal celebrations
+- 🔁 **Replay Bug** - Show/hide replay indicator
+- 👤 **Player Card** - Display player lower thirds with roster lookup
+- 🥅 **Goalie Stats** - Show goalie save percentages
+- 📊 **Period Summary** - End of period stats
+- 🎬 **Game Intro** - Pre-game matchup graphic
+- ⭐ **Three Stars** - Post-game honors
+- ⚡ **Power Play** - Enhanced PP graphic
+- 🎯 **Shot Counter** - Update SOG display
+- 📰 **Ticker** - League scores crawl
 
-### Team Management
+### 👥 Team Management
 
-- **Team Customization** - Set team names, colors, and logos
-- **Roster Manager** - Add/edit player names and numbers
-- **Logo Upload** - Upload custom team logos (PNG, SVG, etc.)
+- 🎨 **Team Customization** - Set team names, colors, and logos
+- 📋 **Roster Manager** - Add/edit player names and numbers
+- 🖼️ **Logo Upload** - Upload custom team logos (PNG, SVG, etc.)
 
-### System Control
+### 🔌 System Control
 
-- **Serial Port** - Configure MP-70 connection
-- **CasparCG control** - Start/stop server, connect AMCP
-- **OBS control** - Start/stop OBS, connect WebSocket
-- **Connection status** - Monitor all integrations
+- 📡 **Serial Port** - Configure MP-70 connection
+- 🎬 **CasparCG control** - Start/stop server, connect AMCP
+- 📺 **OBS control** - Start/stop OBS, connect WebSocket
+- 🔗 **Connection status** - Monitor all integrations
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## API Reference
+## 🔌 API Reference
 
-**Base URL:** `http://localhost:9876/api`
+<p align="center">
+  <img src="https://img.shields.io/badge/Base%20URL-localhost:9876/api-blue?style=for-the-badge" alt="Base URL">
+</p>
 
 ### REST API
 
@@ -611,9 +662,10 @@ socket.on('state_update', (state) => {
 });
 ```
 
-### Stream Deck Integration
+### 🎛️ Stream Deck Integration
 
-SLAP's API works great with Stream Deck and similar control surfaces.
+> [!TIP]
+> SLAP's API works great with Stream Deck and similar control surfaces!
 
 | Button | HTTP Request |
 |--------|--------------|
@@ -624,15 +676,16 @@ SLAP's API works great with Stream Deck and similar control surfaces.
 | Replay | `POST /api/overlay/replay` |
 | Player Card | `POST /api/overlay/player` with player data |
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## CasparCG Integration
+## 🎬 CasparCG Integration
 
 ### Installing CasparCG
 
-The easiest way is using the built-in installer:
+> [!NOTE]
+> The easiest way is using the built-in installer:
 
 ```bash
 # Install CasparCG (downloads ~105MB)
@@ -667,13 +720,13 @@ SLAP sends these commands to CasparCG:
 | `CG 1-10 INVOKE 1 "show"` | Show scorebug |
 | `CG 1-10 INVOKE 1 "hide"` | Hide scorebug |
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## MP-70 Protocol
+## 📡 MP-70 Protocol
 
-The MP-70 controller outputs game data via RS-232 serial connection using a binary protocol.
+> The MP-70 controller outputs game data via RS-232 serial connection using a **binary protocol**.
 
 ### Serial Configuration
 
@@ -779,11 +832,11 @@ hexdump -C capture.bin | less
 hexdump -C capture.bin | grep "02.*03"
 ```
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 SLAP/
@@ -831,13 +884,14 @@ SLAP/
         └── MP-70_Manual.pdf
 ```
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
-### Serial Port Issues
+<details>
+<summary><strong>🔌 Serial Port Issues</strong></summary>
 
 **Permission denied (Linux):**
 ```bash
@@ -851,7 +905,10 @@ sudo usermod -a -G dialout $USER
 - Try different USB port
 - Verify baud rate is 9600
 
-### CasparCG Issues
+</details>
+
+<details>
+<summary><strong>🎬 CasparCG Issues</strong></summary>
 
 **Connection refused:**
 - Verify CasparCG server is running
@@ -862,36 +919,57 @@ sudo usermod -a -G dialout $USER
 - Verify template is loaded: `CG 1-10 INFO`
 - Check channel/layer numbers match config
 
-### Web Interface Issues
+</details>
+
+<details>
+<summary><strong>🖥️ Web Interface Issues</strong></summary>
 
 **Page not loading:**
-- Verify SLAP is running: `python deploy.py status`
-- Try different port: `python deploy.py start --port 8888`
+- Verify SLAP is running: `./deploy.py status`
+- Try different port: `./deploy.py start --port 8888`
 - Check firewall settings
 
-### Virtual Environment Issues
+</details>
+
+<details>
+<summary><strong>🐍 Virtual Environment Issues</strong></summary>
 
 **pip missing or broken:**
 ```bash
-python deploy.py update  # Recreates venv if broken
+./deploy.py update  # Recreates venv if broken
 ```
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+</details>
+
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## Development TODO
+## 📋 Development TODO
 
-### Completed ✅
+<table>
+<tr>
+<td width="50%">
+
+### ✅ Completed & Tested
+<img src="https://img.shields.io/badge/7_Features-Production%20Ready-success?style=flat-square" alt="7 Tested">
 
 - [x] Core scorebug template with animations
 - [x] RS-232 serial parser for MP-70
-- [x] CasparCG AMCP client integration
-- [x] OBS WebSocket integration
 - [x] Web dashboard with live preview
 - [x] Team customization (logos, colors, names)
 - [x] Serial port configuration via web UI
-- [x] Local JavaScript hosting (no CDN dependencies)
+- [x] Local JavaScript hosting (no CDN)
+- [x] Simulation mode
+
+</td>
+<td width="50%">
+
+### 🟡 Completed (Needs Testing)
+<img src="https://img.shields.io/badge/15_Features-Awaiting%20Testing-yellow?style=flat-square" alt="15 Untested">
+
+- [x] CasparCG AMCP client integration
+- [x] OBS WebSocket integration
 - [x] Goal Splash overlay
 - [x] Shot Counter overlay
 - [x] Penalty Box overlay
@@ -906,12 +984,21 @@ python deploy.py update  # Recreates venv if broken
 - [x] Broadcast overlay controls in Web UI
 - [x] Team roster manager
 
-### In Progress 🔄
+</td>
+</tr>
+</table>
 
-- [ ] Player headshot image support
-- [ ] Roster import from CSV/Excel
+### 🔄 In Progress
 
-### Planned 📋
+| Feature | Status |
+|---------|--------|
+| Player headshot image support | 🚧 |
+| Roster import from CSV/Excel | 🚧 |
+
+### 🗺️ Roadmap
+
+<details>
+<summary><strong>Planned Features</strong></summary>
 
 - [ ] Multi-game ticker with live scores API
 - [ ] Intermission countdown clock
@@ -925,17 +1012,22 @@ python deploy.py update  # Recreates venv if broken
 - [ ] CasparCG template hot-reload
 - [ ] OBS scene auto-switching
 
-### Hardware Support (Future) 🔌
+</details>
+
+<details>
+<summary><strong>🔌 Future Hardware Support</strong></summary>
 
 - [ ] Daktronics All Sport 5000 support
 - [ ] OES scoreboard support
 - [ ] Generic scoreboard protocol adapters
 
-<p align="right"><a href="#table-of-contents">⬆ Back to top</a></p>
+</details>
+
+<p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
 ---
 
-## License
+## 📄 License
 
 This project is licensed under the **GNU General Public License v3.0**.
 
@@ -944,6 +1036,15 @@ See the [LICENSE](LICENSE) file for details.
 ---
 
 <p align="center">
-  <strong>SLAP</strong> - Scoreboard Live Automation Platform<br>
+  <img src="https://img.shields.io/badge/Made%20with-❤️-red?style=for-the-badge" alt="Made with Love">
+</p>
+
+<p align="center">
+  <strong>🏒 SLAP</strong><br>
+  <em>Scoreboard Live Automation Platform</em><br>
   Built for hockey broadcast professionals
+</p>
+
+<p align="center">
+  <a href="#-slap">⬆️ Back to Top</a>
 </p>
