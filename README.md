@@ -1,12 +1,71 @@
 # SLAP - Scoreboard Live Automation Platform
 
-A hockey scoreboard integration system for broadcast graphics. SLAP captures real-time game data from Trans-Lux FairPlay MP-70 scoreboard controllers and displays live score overlays via CasparCG.
+A hockey scoreboard integration system for broadcast graphics. SLAP captures real-time game data from Trans-Lux FairPlay MP-70 scoreboard controllers and displays live score overlays via CasparCG or OBS Studio.
+
+## System Overview
+
+```
+┌────────────┐      RS-232       ┌──────────────┐
+│ Scorekeeper│───────────────────│  Scoreboard  │
+│  Console   │                   │   Display    │
+│  (MP-70)   │                   └──────────────┘
+└─────┬──────┘
+      │ RS-232 (sniff)
+      ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                          SLAP Server                                │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────┐  │
+│  │   Serial Parser  │───▶│    Game State    │───▶│  AMCP Client  │  │
+│  │  (MP-70 Protocol)│    │ scores, clock,   │    │               │  │
+│  └──────────────────┘    │ period, penalties│    └───────┬───────┘  │
+│                          └────────┬─────────┘            │          │
+│                                   │                      │ AMCP     │
+│                                   ▼                      ▼          │
+│                          ┌──────────────────┐    ┌───────────────┐  │
+│                          │   OBS Client     │    │   CasparCG    │  │
+│                          │  (WebSocket)     │    │    Server     │  │
+│                          └────────┬─────────┘    └───────┬───────┘  │
+└───────────────────────────────────┼──────────────────────┼──────────┘
+                                    │                      │
+                                    ▼                      ▼
+                           ┌──────────────┐    ┌─────────────────────┐
+                           │  OBS Studio  │    │  HTML/CSS/JS        │
+                           │  (streaming) │    │  Template           │
+                           └──────────────┘    │  ┌───────────────┐  │
+                                               │  │ <div id="...">│  │
+                                               │  │ score, clock  │  │
+                                               │  └───────────────┘  │
+                                               └──────────┬──────────┘
+                                                          │
+                                                          ▼
+                                               ┌─────────────────────┐
+                                               │  Broadcast Output   │
+                                               │  (SDI/NDI/Screen)   │
+                                               └─────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Web Dashboard (localhost:9876)                   │
+│  • Live scorebug preview    • Manual score/clock override           │
+│  • Goal trigger buttons     • CasparCG & OBS control                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Dataflow:**
+1. **Scorekeeper** operates the MP-70 console during the game
+2. **MP-70** sends game data via RS-232 to the physical scoreboard
+3. **SLAP** passively sniffs the RS-232 line (no interference with scoreboard)
+4. **Parser** decodes the MP-70 binary protocol (scores, period, clock, penalties)
+5. **AMCP Client** sends data updates to CasparCG via AMCP protocol
+6. **CasparCG** renders the HTML/CSS/JS template, updating divs with predefined IDs
+7. **Web Dashboard** provides real-time monitoring and manual override control
 
 ## Features
 
 - **Real-time scoreboard capture** - Reads data from MP-70 controllers via RS-232 serial
 - **CasparCG integration** - Sends live updates to broadcast graphics
+- **OBS Studio integration** - WebSocket control for streaming/recording
 - **Web dashboard** - Control panel with live scorebug preview
+- **Simultaneous control** - Web UI works alongside scorekeeper input
 - **Preview/Live modes** - Test without hardware, switch to live when ready
 - **Simulation mode** - Full game simulation for testing
 - **Smooth animations** - 60fps clock updates and score animations
@@ -17,10 +76,10 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 
 ```bash
 # Install
-./deploy.sh install
+python deploy.py install
 
 # Start in simulation mode
-./deploy.sh start
+python deploy.py start
 
 # Open in browser
 # http://localhost:9876
@@ -28,34 +87,23 @@ A hockey scoreboard integration system for broadcast graphics. SLAP captures rea
 
 ## Commands
 
-### SLAP
-
 ```bash
-./deploy.sh install     # Install SLAP and dependencies
-./deploy.sh update      # Update/reinstall dependencies
-./deploy.sh uninstall   # Remove installation
-./deploy.sh start       # Start SLAP server
-./deploy.sh stop        # Stop SLAP server
-./deploy.sh status      # Check if running
+python deploy.py install     # Install SLAP and dependencies
+python deploy.py start       # Start SLAP server
+python deploy.py stop        # Stop SLAP server
+python deploy.py restart     # Restart SLAP server
+python deploy.py status      # Check if running
+python deploy.py logs        # Show logs (-f to follow)
+python deploy.py update      # Update/reinstall dependencies
+python deploy.py uninstall   # Remove installation
 ```
-
-### CasparCG
-
-```bash
-./deploy.sh caspar-install  # Download and install CasparCG
-./deploy.sh caspar-start    # Start CasparCG server
-./deploy.sh caspar-stop     # Stop CasparCG server
-./deploy.sh caspar-status   # Check CasparCG status
-```
-
-CasparCG installs to `~/.local/share/casparcg/` for compatibility with immutable Linux systems (Fedora Silverblue, Ubuntu Core, etc.).
 
 ### Start Options
 
 ```bash
-./deploy.sh start --port 9876      # Custom port
-./deploy.sh start --simulate       # Simulation mode (default)
-./deploy.sh start --debug          # Debug logging
+python deploy.py start --port 9876   # Custom port
+python deploy.py start --debug       # Debug logging
+python deploy.py start --no-simulate # Use real hardware (default: simulation)
 ```
 
 ## Web Dashboard
@@ -68,30 +116,30 @@ The dashboard at http://localhost:9876 provides:
 - **Goal buttons** - Trigger goal animations
 - **Clock controls** - Set period and game time
 - **Penalty controls** - Add 2-minute or 5-minute penalties
-- **CasparCG control** - Start/stop CasparCG server, connect/disconnect
-- **Connection status** - Monitor serial port and CasparCG
+- **CasparCG control** - Connect/disconnect from CasparCG server
+- **OBS control** - Start/stop OBS, connect WebSocket, manage scorebug overlay
+- **Connection status** - Monitor serial port, CasparCG, and OBS
 
 ## Project Structure
 
 ```
 SLAP/
-├── deploy.sh           # Install/start/stop script
+├── deploy.py           # Python deploy script (install/start/stop)
 ├── LICENSE             # GPL-3.0 License
 ├── README.md           # This file
 └── src/
     ├── run.py          # Main entry point
-    ├── simulate.py     # Quick simulation launcher
     ├── requirements.txt
     ├── slap/           # Python package
     │   ├── config.py
-    │   ├── parser/     # Protocol parsers
+    │   ├── parser/     # MP-70 protocol decoder
     │   ├── core/       # Game state & logic
-    │   ├── output/     # CasparCG client
+    │   ├── output/     # CasparCG & OBS clients
     │   ├── simulator/  # Fake serial for testing
     │   └── web/        # Flask dashboard
-    ├── templates/      # CasparCG HTML templates
+    ├── templates/      # CasparCG HTML/CSS/JS templates
     ├── config/         # Configuration files
-    └── docs/           # Additional documentation
+    └── docs/           # Protocol documentation
 ```
 
 ## Configuration
@@ -130,7 +178,8 @@ Edit `src/config/default.json`:
 ## Software Requirements
 
 - Python 3.8+
-- CasparCG Server (optional, for broadcast output)
+- CasparCG Server (for broadcast graphics output)
+- OBS Studio 28+ (optional, for streaming/recording with WebSocket)
 
 ## License
 

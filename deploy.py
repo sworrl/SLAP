@@ -18,6 +18,7 @@ import os
 import sys
 import subprocess
 import signal
+import shutil
 import time
 import argparse
 from pathlib import Path
@@ -58,13 +59,66 @@ def check_python():
         sys.exit(1)
     print_status(f"Found Python {version.major}.{version.minor}")
 
+def is_venv_valid():
+    """Check if virtual environment exists and is functional"""
+    if not VENV_DIR.exists():
+        return False, "not found"
+
+    python = get_venv_python()
+    pip = get_venv_pip()
+
+    # Check python exists
+    if not python.exists():
+        return False, "python missing"
+
+    # Check pip exists
+    if not pip.exists():
+        return False, "pip missing"
+
+    # Verify python actually works
+    try:
+        result = subprocess.run(
+            [str(python), "-c", "import sys; print(sys.version_info.major)"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            return False, "python broken"
+    except Exception:
+        return False, "python broken"
+
+    # Verify pip works
+    try:
+        result = subprocess.run(
+            [str(pip), "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            return False, "pip broken"
+    except Exception:
+        return False, "pip broken"
+
+    return True, "ok"
+
+
 def create_venv():
-    """Create virtual environment if it doesn't exist"""
-    if VENV_DIR.exists():
-        print_status("Virtual environment already exists")
+    """Create virtual environment, recreating if broken"""
+    valid, reason = is_venv_valid()
+
+    if valid:
+        print_status("Virtual environment OK")
         return
 
-    print_status("Creating virtual environment...")
+    # Remove broken venv if it exists
+    if VENV_DIR.exists():
+        print_warning(f"Virtual environment broken ({reason}), recreating...")
+        shutil.rmtree(VENV_DIR)
+    else:
+        print_status("Creating virtual environment...")
+
     subprocess.run([sys.executable, "-m", "venv", str(VENV_DIR)], check=True)
     print_success("Virtual environment created")
 
@@ -152,7 +206,6 @@ def do_uninstall():
     # Remove virtual environment
     if VENV_DIR.exists():
         print_status("Removing virtual environment...")
-        import shutil
         shutil.rmtree(VENV_DIR)
 
     # Remove PID and log files
