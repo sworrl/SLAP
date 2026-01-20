@@ -56,7 +56,7 @@ NGINX_AVAILABLE = Path("/etc/nginx/sites-available")
 NGINX_ENABLED = Path("/etc/nginx/sites-enabled")
 HOSTS_FILE = Path("/etc/hosts")
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 GITHUB_REPO = "https://github.com/sworrl/SLAP.git"
 
 

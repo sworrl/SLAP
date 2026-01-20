@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.1.0-brightgreen?style=for-the-badge" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/Version-2.2.0-brightgreen?style=for-the-badge" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge" alt="GPL-3.0">
   <img src="https://img.shields.io/badge/CasparCG-Ready-orange?style=for-the-badge" alt="CasparCG">

@@ -283,7 +283,7 @@
         };
 
         let lastUpdateTime = performance.now();
-        let clockRunning = true;
+        let clockRunning = false;  // Only count down when serial data is flowing
 
         // Format period for display
         function formatPeriod(period) {
@@ -336,20 +336,14 @@
             const deltaTime = (timestamp - lastUpdateTime) / 1000;
             lastUpdateTime = timestamp;
 
-            // Smooth clock countdown (interpolate towards target)
-            if (clockRunning && currentState.clockSeconds > 0) {
-                // Smoothly approach target clock value
-                const diff = currentState.targetClockSeconds - currentState.clockSeconds;
-                if (Math.abs(diff) > 0.1) {
-                    // Lerp towards target
-                    currentState.clockSeconds += diff * Math.min(deltaTime * 5, 1);
-                } else {
-                    currentState.clockSeconds = currentState.targetClockSeconds;
-                }
-
-                // Also countdown in real-time (simulation runs at 10x, so we do 10x too)
-                currentState.clockSeconds = Math.max(0, currentState.clockSeconds - deltaTime * 10);
-                currentState.targetClockSeconds = Math.max(0, currentState.targetClockSeconds - deltaTime * 10);
+            // Smooth clock interpolation (only interpolates towards target from state updates)
+            // Clock does NOT auto-countdown - only updates when serial/socket data arrives
+            const diff = currentState.targetClockSeconds - currentState.clockSeconds;
+            if (Math.abs(diff) > 0.1) {
+                // Lerp towards target for smooth display
+                currentState.clockSeconds += diff * Math.min(deltaTime * 5, 1);
+            } else {
+                currentState.clockSeconds = currentState.targetClockSeconds;
             }
 
             // Update clock display

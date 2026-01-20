@@ -1026,19 +1026,15 @@
     <div class="header">
         <div class="header-content">
             <img src="/static/img/SLAP_icon.webp" alt="SLAP" class="header-logo">
-            <h1>SLAP <span class="mode-indicator preview" id="modeIndicator">PREVIEW</span></h1>
+            <h1>SLAP</h1>
             <p class="subtitle">Scoreboard Live Automation Platform</p>
-            <div class="mode-toggle">
-                <button class="mode-btn preview active" id="btnPreview" onclick="setMode('preview')">Preview</button>
-                <button class="mode-btn live" id="btnLive" onclick="setMode('live')">Live</button>
-            </div>
         </div>
     </div>
 
     <div class="container">
-        <!-- Scorebug Preview -->
+        <!-- Scorebug Display -->
         <div class="card preview-container">
-            <h2><img src="/static/img/SLAP_icon.webp" class="card-icon" alt=""> <span id="previewTitle">Preview</span></h2>
+            <h2><img src="/static/img/SLAP_icon.webp" class="card-icon" alt=""> Scorebug</h2>
             <div class="preview-frame">
                 <iframe id="scorebugPreview" src="/scorebug"></iframe>
             </div>
@@ -1289,6 +1285,8 @@
             <div class="controls">
                 <button class="btn btn-primary" onclick="serialApplyConfig()">Apply</button>
                 <button class="btn btn-secondary" onclick="serialRefreshPorts()">Refresh</button>
+                <button class="btn btn-success" id="btnSerialConnect" onclick="serialConnect()">Connect</button>
+                <button class="btn btn-danger" id="btnSerialDisconnect" onclick="serialDisconnect()">Disconnect</button>
                 <button class="btn btn-warning" id="btnToggleSim" onclick="toggleSimMode()" style="display: none;">Toggle Sim</button>
             </div>
             <div id="serialInfo" style="margin-top: 12px; font-size: 0.8rem; color: var(--text-dim);"></div>
@@ -1792,8 +1790,8 @@
             updateStatus('serialStatus', currentState.serial_connected);
             updateStatus('casparStatus', currentState.caspar_connected);
 
-            // Update scorebug preview
-            updateScorebugPreview();
+            // Update scorebug display
+            updateScorebug();
         }
 
         function formatPenalty(seconds) {
@@ -1813,7 +1811,7 @@
             }
         }
 
-        function updateScorebugPreview() {
+        function updateScorebug() {
             const iframe = document.getElementById('scorebugPreview');
             if (iframe.contentWindow && iframe.contentWindow.updateFromParent) {
                 iframe.contentWindow.updateFromParent(currentState.game);
@@ -1858,46 +1856,10 @@
         function showBug() { api('/bug/show', 'POST'); }
         function hideBug() { api('/bug/hide', 'POST'); }
 
-        // Mode switching
-        let currentMode = 'preview';
-
-        async function setMode(mode) {
-            const result = await api('/mode', 'POST', { mode });
-            if (result.status === 'ok') {
-                currentMode = result.mode;
-                updateModeUI();
-            }
-        }
-
-        function updateModeUI() {
-            const indicator = document.getElementById('modeIndicator');
-            const btnPreview = document.getElementById('btnPreview');
-            const btnLive = document.getElementById('btnLive');
-            const title = document.getElementById('previewTitle');
-
-            indicator.className = 'mode-indicator ' + currentMode;
-            indicator.textContent = currentMode.toUpperCase();
-
-            btnPreview.classList.toggle('active', currentMode === 'preview');
-            btnLive.classList.toggle('active', currentMode === 'live');
-
-            title.textContent = currentMode === 'preview' ? 'Preview' : 'Live Output';
-        }
-
-        socket.on('mode_change', (data) => {
-            currentMode = data.mode;
-            updateModeUI();
-        });
-
         // Initial state fetch
         api('/state').then(state => {
             currentState = state;
             updateUI();
-        });
-
-        api('/mode').then(data => {
-            currentMode = data.mode;
-            updateModeUI();
         });
 
         // CasparCG Server Control
@@ -2121,6 +2083,34 @@
                 alert('Config saved. Restart SLAP to apply.');
             } catch (e) {
                 alert('Failed to save configuration');
+            }
+        }
+
+        async function serialConnect() {
+            try {
+                const result = await api('/serial/connect', 'POST');
+                if (result.status === 'ok') {
+                    alert(result.message || 'Serial port connected');
+                    serialRefreshStatus();
+                } else {
+                    alert(result.error || 'Failed to connect');
+                }
+            } catch (e) {
+                alert('Failed to connect: ' + (e.message || e));
+            }
+        }
+
+        async function serialDisconnect() {
+            try {
+                const result = await api('/serial/disconnect', 'POST');
+                if (result.status === 'ok') {
+                    alert(result.message || 'Serial port released');
+                    serialRefreshStatus();
+                } else {
+                    alert(result.error || 'Failed to disconnect');
+                }
+            } catch (e) {
+                alert('Failed to disconnect: ' + (e.message || e));
             }
         }
 

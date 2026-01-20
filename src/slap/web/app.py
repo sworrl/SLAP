@@ -1233,6 +1233,63 @@ def create_app(config_path=None) -> Flask:
             "message": "Config updated. Restart SLAP to apply changes."
         })
 
+    @app.route("/api/serial/disconnect", methods=["POST"])
+    def serial_disconnect():
+        """Disconnect/release the serial port so other apps can use it."""
+        global _serial_port
+
+        if _serial_port is None:
+            return jsonify({"status": "ok", "message": "Serial port already disconnected"})
+
+        try:
+            if hasattr(_serial_port, 'close'):
+                _serial_port.close()
+            _serial_port = None
+            state.serial_connected = False
+            logger.info("Serial port disconnected/released")
+            return jsonify({"status": "ok", "message": "Serial port released"})
+        except Exception as e:
+            logger.error(f"Failed to disconnect serial: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/serial/connect", methods=["POST"])
+    def serial_connect():
+        """Connect/open the configured serial port."""
+        global _serial_port
+
+        config = get_config()
+        if not config.serial.port:
+            return jsonify({"error": "No serial port configured"}), 400
+
+        # Close existing connection if any
+        if _serial_port is not None:
+            try:
+                if hasattr(_serial_port, 'close'):
+                    _serial_port.close()
+            except:
+                pass
+
+        try:
+            import serial
+            _serial_port = serial.Serial(
+                port=config.serial.port,
+                baudrate=config.serial.baudrate,
+                timeout=config.serial.timeout if hasattr(config.serial, 'timeout') else 0.1
+            )
+            state.serial_connected = True
+            logger.info(f"Serial port connected: {config.serial.port}")
+            return jsonify({
+                "status": "ok",
+                "message": f"Connected to {config.serial.port}",
+                "port": config.serial.port,
+                "baudrate": config.serial.baudrate
+            })
+        except Exception as e:
+            _serial_port = None
+            state.serial_connected = False
+            logger.error(f"Failed to connect serial: {e}")
+            return jsonify({"error": str(e)}), 500
+
     # ============ Roster Management API ============
 
     def get_roster_path():

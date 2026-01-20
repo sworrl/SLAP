@@ -37,7 +37,7 @@ from datetime import datetime
 
 APP_NAME = "slap"
 APP_DISPLAY_NAME = "SLAP - Scoreboard Live Automation Platform"
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 GITHUB_REPO = "https://github.com/sworrl/SLAP.git"
 GITHUB_RAW = "https://raw.githubusercontent.com/sworrl/SLAP/main"
 
@@ -729,7 +729,7 @@ NGINX_AVAILABLE = Path("/etc/nginx/sites-available")
 NGINX_ENABLED = Path("/etc/nginx/sites-enabled")
 HOSTS_FILE = Path("/etc/hosts")
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 GITHUB_REPO = "https://github.com/sworrl/SLAP.git"
 
 

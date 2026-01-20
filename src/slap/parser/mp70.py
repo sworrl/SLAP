@@ -281,8 +281,8 @@ class MP70Parser:
             'C' - Clock update: Updates internal clock, returns None
             'H' - Score update: Returns full GameData
         """
-        # Track raw data for verbose display
-        update_raw_data(packet)
+        # Raw data is now captured in run.py before packet extraction
+        # This allows seeing ALL serial data, not just valid MP-70 packets
 
         if len(packet) < MIN_PACKET_LENGTH:
             logger.debug(f"Packet too short: {len(packet)} < {MIN_PACKET_LENGTH}")

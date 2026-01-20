@@ -19,10 +19,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 from slap.config import load_config, set_config
 from slap.core.state import state
 from slap.core.hockey import HockeyLogic
-from slap.parser.mp70 import MP70Parser
+from slap.parser.mp70 import MP70Parser, update_raw_data
 from slap.output.caspar import CasparClient, MockCasparClient
 from slap.simulator.fake_serial import FakeSerial
-from slap.web.app import create_app, socketio, set_simulator, set_caspar_client
+from slap.web.app import create_app, socketio, set_simulator, set_caspar_client, set_serial_port
 
 
 def setup_logging(debug: bool = False):
@@ -56,6 +56,9 @@ def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_eve
                 data = serial_port.read(min(512, serial_port.in_waiting))
                 buffer.extend(data)
                 bytes_received += len(data)
+
+                # Update raw data for web UI verbose display (shows ALL incoming data)
+                update_raw_data(data)
 
                 # Log raw bytes in debug mode (hex format)
                 logger.debug(f"RX ({len(data)} bytes): {data.hex(' ')}")
@@ -200,6 +203,7 @@ def main():
         serial_port.open()
         simulator = serial_port.get_simulator()
         set_simulator(simulator)
+        set_serial_port(serial_port)  # Make available to web UI
         state.simulator_running = True
 
         # Connect simulator updates to state
@@ -224,6 +228,7 @@ def main():
                 timeout=config.serial.timeout
             )
             logger.info(f"Opened serial port: {config.serial.port}")
+            set_serial_port(serial_port)  # Make available to web UI
         except Exception as e:
             logger.error(f"Failed to open serial port: {e}")
             logger.warning("Running without serial input - configure a port or enable simulation")
