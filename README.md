@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-2.1.0-brightgreen?style=for-the-badge" alt="Version 2.1.0">
   <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge" alt="GPL-3.0">
   <img src="https://img.shields.io/badge/CasparCG-Ready-orange?style=for-the-badge" alt="CasparCG">
@@ -35,6 +36,7 @@
 <details>
 <summary>Click to expand</summary>
 
+- [🆕 What's New in v2.1.0](#-whats-new-in-v210)
 - [🎯 Overview](#-overview)
   - [System Architecture](#system-architecture)
   - [Multi-Machine Setup](#multi-machine-setup-recommended)
@@ -80,6 +82,32 @@
 - [📄 License](#-license)
 
 </details>
+
+---
+
+## 🆕 What's New in v2.1.0
+
+> **Release Date:** January 2026
+
+### Highlights
+
+| Change | Description |
+|--------|-------------|
+| 🎨 **Modern UI** | Refreshed dashboard with glass morphism, gradients, and subtle textures |
+| 🔧 **Simulation Fix** | Simulation mode no longer auto-starts when disabled - runs in true web-only mode |
+| 🌐 **Web-Only Mode** | Server runs cleanly without serial hardware or simulation when not configured |
+| ⚙️ **Settings Enforcement** | API endpoints properly check `simulation_enabled` before starting simulator |
+| 🎛️ **Cleaner Controls** | Simulation controls only appear when explicitly enabled via CLI |
+
+### Upgrade Notes
+
+If upgrading from v2.0.0:
+```bash
+cd /path/to/SLAP
+git pull
+./deploy.py
+slap restart
+```
 
 ---
 
@@ -168,29 +196,32 @@ OBS Machine (powerful workstation):
 ## 🚀 Quick Start
 
 > [!TIP]
-> Try demo mode first to see SLAP in action without any hardware!
+> After installation, SLAP is controlled via the `slap` command and available in your start menu!
 
 ```bash
-# Make deploy script executable (first time only)
+# Clone the repository
+git clone https://github.com/sworrl/SLAP.git
+cd SLAP
+
+# Run the installer (handles everything automatically)
 chmod +x deploy.py
+./deploy.py
 
-# Install with HTTPS (recommended)
-./deploy.py install
-./deploy.py https setup
-
-# Start in demo mode (fake game data for testing)
-./deploy.py start --simulate
-
-# Or start in live mode (reads from serial port)
-./deploy.py start
+# After installation, use the 'slap' command:
+slap start                    # Start the server
+slap status                   # Check if running
+slap stop                     # Stop the server
 
 # Open in browser
 # https://slap.localhost
 ```
 
-> **Note:** The deploy script includes a shebang (`#!/usr/bin/env python3`) so you can run it directly with `./deploy.py` instead of `python deploy.py`. Both work.
-
-> **HTTPS:** After running `./deploy.py https setup`, SLAP is accessible at `https://slap.localhost` with a self-signed SSL certificate. The setup configures nginx as a reverse proxy and adds the hostname to `/etc/hosts`.
+> **Note:** The installer automatically:
+> - Installs all prerequisites (Python, nginx, openssl, etc.)
+> - Creates a global `slap` command
+> - Sets up HTTPS with self-signed SSL certificate
+> - Adds SLAP to your start menu
+> - Configures auto-start on boot
 
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
 
@@ -208,13 +239,14 @@ chmod +x deploy.py
 | 📡 **MP-70 Serial Parser** | Binary protocol decoder for RS-232 scoreboard data | ✅ Complete |
 | 🎬 **CasparCG AMCP Client** | Full AMCP protocol over TCP sockets | ✅ Complete |
 | 📺 **OBS WebSocket Client** | Scene/source control via obs-websocket | ✅ Complete |
-| 🖥️ **Web Dashboard** | Control panel with live scorebug preview | ✅ Complete |
+| 🖥️ **Web Dashboard** | Modern control panel with glass morphism UI and live preview | ✅ Complete |
 | 🎮 **Game Simulator** | Fake serial with realistic game simulation | ✅ Complete |
 | 🏒 **11 Broadcast Overlays** | Goal, shots, penalty, player, period, intro, goalie, powerplay, stars, replay, ticker | ✅ Complete |
 | 👥 **Team Roster Manager** | CRUD API for player names/numbers/stats | ✅ Complete |
 | 🎨 **Team Customization** | Logos, colors, names via web UI | ✅ Complete |
 | ⚡ **Serial Port Config** | Hot-swap serial settings via web UI | ✅ Complete |
 | 🔄 **Preview/Live Modes** | Test without hardware, switch when ready | ✅ Complete |
+| 🌐 **Web-Only Mode** | Run dashboard without serial or simulation | ✅ Complete |
 | 📦 **Local Dependencies** | All JS libraries hosted locally (no CDN) | ✅ Complete |
 | 🔌 **REST API** | 75+ endpoints for full control | ✅ Complete |
 | 💾 **SQLite Database** | Game history, events, player stats persistence | ✅ Complete |
@@ -298,49 +330,61 @@ All overlays respond to Socket.IO events for real-time triggering.
 git clone https://github.com/sworrl/SLAP.git
 cd SLAP
 
-# Make deploy script executable
+# Run the installer
 chmod +x deploy.py
-
-# Run the install script
-./deploy.py install
+./deploy.py
 ```
 
-The deploy script handles:
-- Python version verification
-- Virtual environment creation
+The installer handles:
+- System package installation (Python, nginx, openssl, git)
+- Python virtual environment creation
 - Dependency installation
+- HTTPS/SSL certificate generation
+- nginx reverse proxy configuration
+- Start menu entry creation
+- Systemd service for auto-start
 
-### Commands
+### Commands (after installation)
 
 | Command | Description |
 |---------|-------------|
-| `./deploy.py install` | Install SLAP and dependencies |
-| `./deploy.py start` | Start SLAP server |
-| `./deploy.py stop` | Stop SLAP server |
-| `./deploy.py restart` | Restart SLAP server |
-| `./deploy.py status` | Check if running |
-| `./deploy.py logs` | Show logs (`-f` to follow) |
-| `./deploy.py update` | Update/reinstall dependencies |
-| `./deploy.py uninstall` | Remove installation |
+| `slap start` | Start SLAP server |
+| `slap stop` | Stop SLAP server |
+| `slap restart` | Restart SLAP server |
+| `slap status` | Check if running |
+| `slap logs` | Show logs (`-f` to follow) |
+| `slap config` | View/edit configuration |
+| `slap -update` | Update from GitHub |
+| `slap --help` | Show all commands |
+
+#### Simulation Mode
+
+Simulation mode is **hidden by default** in the WebUI. To enable it:
+
+```bash
+slap -simulation:enable     # Show simulation controls in WebUI
+slap -simulation:disable    # Hide simulation controls (default)
+```
 
 #### HTTPS Commands
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.py https setup` | Configure HTTPS with nginx and SSL certificate |
-| `./deploy.py https remove` | Remove HTTPS configuration |
-| `./deploy.py https status` | Check HTTPS setup status |
+```bash
+slap -https:setup          # Configure HTTPS with nginx and SSL
+slap -https:remove         # Remove HTTPS configuration
+```
 
-> **Note:** HTTPS setup requires nginx and sudo privileges. The deploy script can be run as root, with sudo, or as a standard user (will prompt for sudo when needed).
-
-#### Start Options
+#### Other Options
 
 ```bash
-./deploy.py start                        # Live mode (default)
-./deploy.py start --simulate             # Demo mode (fake data)
-./deploy.py start --port 9876            # Custom port
-./deploy.py start --debug                # Debug logging
-./deploy.py start --serial /dev/ttyUSB0  # Specify serial port (also configurable in Web UI)
+slap start --port 9876            # Custom port
+slap start --debug                # Debug logging
+slap -serial:/dev/ttyUSB0         # Set serial port
+```
+
+### Uninstall
+
+```bash
+./deploy.py --uninstall
 ```
 
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
@@ -1006,7 +1050,7 @@ sudo usermod -a -G dialout $USER
 
 ### ✅ Code Complete (Needs Field Testing)
 
-<img src="https://img.shields.io/badge/24_Features-Code%20Complete-success?style=flat-square" alt="24 Complete">
+<img src="https://img.shields.io/badge/25_Features-Code%20Complete-success?style=flat-square" alt="25 Complete">
 
 <table>
 <tr><td>

@@ -191,6 +191,9 @@ def main():
     # Setup serial port
     stop_event = threading.Event()
 
+    serial_port = None
+    simulator = None
+
     if config.simulator.enabled:
         logger.info("Starting in SIMULATION mode")
         serial_port = FakeSerial()
@@ -211,7 +214,8 @@ def main():
             )
 
         simulator.set_on_update(on_sim_update)
-    else:
+    elif config.serial.port:
+        # Only try to open serial if a port is configured
         try:
             import serial
             serial_port = serial.Serial(
@@ -222,20 +226,24 @@ def main():
             logger.info(f"Opened serial port: {config.serial.port}")
         except Exception as e:
             logger.error(f"Failed to open serial port: {e}")
-            logger.info("Falling back to simulation mode")
-            serial_port = FakeSerial()
-            serial_port.open()
-            simulator = serial_port.get_simulator()
-            set_simulator(simulator)
-            config.simulator.enabled = True
+            logger.warning("Running without serial input - configure a port or enable simulation")
+            serial_port = None
+    else:
+        logger.info("No serial port configured - running in web-only mode")
+        logger.info("Configure a serial port with: slap -serial:/dev/ttyUSB0")
+        logger.info("Or enable simulation with: slap -simulation:enable")
 
-    # Start serial reader thread
-    serial_thread = threading.Thread(
-        target=run_serial_reader,
-        args=(serial_port, mp70_parser, hockey_logic, caspar_client, stop_event),
-        daemon=True
-    )
-    serial_thread.start()
+    # Start serial reader thread (only if serial port is available)
+    serial_thread = None
+    if serial_port is not None:
+        serial_thread = threading.Thread(
+            target=run_serial_reader,
+            args=(serial_port, mp70_parser, hockey_logic, caspar_client, stop_event),
+            daemon=True
+        )
+        serial_thread.start()
+    else:
+        logger.info("Serial reader not started - no serial connection")
 
     # Create and run web app
     app = create_app()
@@ -256,7 +264,7 @@ def main():
         logger.info("Shutting down...")
     finally:
         stop_event.set()
-        if hasattr(serial_port, 'close'):
+        if serial_port is not None and hasattr(serial_port, 'close'):
             serial_port.close()
         if caspar_client:
             caspar_client.disconnect()

@@ -37,8 +37,20 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg-dark);
             background-image:
-                radial-gradient(ellipse at 20% 0%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(99, 102, 241, 0.08) 0%, transparent 50%);
+                /* Subtle noise texture overlay */
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"),
+                /* Gradient mesh */
+                radial-gradient(ellipse at 20% 0%, rgba(0, 212, 255, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 60%),
+                /* Diagonal line texture */
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(255, 255, 255, 0.005) 2px,
+                    rgba(255, 255, 255, 0.005) 4px
+                );
             color: var(--text);
             min-height: 100vh;
             padding: 20px;
@@ -256,18 +268,56 @@
 
         /* Cards */
         .card {
-            background: var(--bg-card);
+            background: linear-gradient(
+                135deg,
+                rgba(20, 20, 35, 0.9) 0%,
+                rgba(15, 15, 25, 0.85) 50%,
+                rgba(20, 20, 35, 0.9) 100%
+            );
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: 16px;
             padding: 24px;
             border: 1px solid var(--border);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Subtle inner glow effect */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(0, 212, 255, 0.3) 50%,
+                transparent 100%
+            );
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .card:hover {
-            background: var(--bg-card-hover);
+            background: linear-gradient(
+                135deg,
+                rgba(30, 30, 50, 0.95) 0%,
+                rgba(20, 20, 35, 0.9) 50%,
+                rgba(30, 30, 50, 0.95) 100%
+            );
             border-color: var(--border-glow);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(0, 212, 255, 0.1) inset;
+            transform: translateY(-2px);
+        }
+
+        .card:hover::before {
+            opacity: 1;
         }
 
         .card h2 {
@@ -302,21 +352,50 @@
         .preview-frame {
             width: 100%;
             aspect-ratio: 16/9;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+            background: linear-gradient(
+                135deg,
+                #0a0a12 0%,
+                #12121f 25%,
+                #1a1a2e 50%,
+                #12121f 75%,
+                #0a0a12 100%
+            );
             border-radius: 12px;
             overflow: hidden;
             position: relative;
-            border: 1px solid var(--border);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            box-shadow:
+                0 0 0 1px rgba(0, 212, 255, 0.1),
+                0 10px 40px rgba(0, 0, 0, 0.5),
+                inset 0 0 100px rgba(0, 212, 255, 0.02);
         }
 
         .preview-frame::before {
             content: '';
             position: absolute;
             inset: 0;
-            background: url('/static/img/SLAP_icon.webp') center center no-repeat;
-            background-size: 120px;
-            opacity: 0.03;
+            background:
+                url('/static/img/SLAP_icon.webp') center center no-repeat,
+                radial-gradient(ellipse at center, rgba(0, 212, 255, 0.03) 0%, transparent 70%);
+            background-size: 120px, cover;
+            opacity: 0.5;
             pointer-events: none;
+        }
+
+        .preview-frame::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(0, 212, 255, 0.5) 50%,
+                transparent 100%
+            );
         }
 
         .preview-frame iframe {
@@ -352,11 +431,34 @@
             font-size: 5rem;
             font-weight: 800;
             line-height: 1;
-            text-shadow: 0 0 40px currentColor;
+            text-shadow:
+                0 0 40px currentColor,
+                0 0 80px currentColor;
+            transition: all 0.3s ease;
         }
 
-        .team-score.home { color: var(--home); }
-        .team-score.away { color: var(--away); }
+        .team-score:hover {
+            transform: scale(1.05);
+            text-shadow:
+                0 0 50px currentColor,
+                0 0 100px currentColor;
+        }
+
+        .team-score.home {
+            color: var(--home);
+            background: linear-gradient(180deg, #60a5fa 0%, var(--home) 50%, #2563eb 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .team-score.away {
+            color: var(--away);
+            background: linear-gradient(180deg, #f87171 0%, var(--away) 50%, #dc2626 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         .vs {
             font-size: 1.5rem;
@@ -407,18 +509,42 @@
             cursor: pointer;
             font-size: 0.85rem;
             font-weight: 600;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Shine effect on buttons */
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.2) 50%,
+                transparent 100%
+            );
+            transition: left 0.5s ease;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
         }
 
         .btn:active {
-            transform: translateY(0);
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
         }
 
         .btn:disabled {
@@ -427,39 +553,92 @@
             transform: none;
         }
 
+        .btn:disabled::before {
+            display: none;
+        }
+
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 50%, var(--primary) 100%);
+            background-size: 200% 200%;
             color: var(--bg-dark);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(0, 212, 255, 0.5);
         }
 
         .btn-success {
-            background: linear-gradient(135deg, var(--success), #059669);
+            background: linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%);
+            background-size: 200% 200%;
             color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);
         }
 
         .btn-danger {
-            background: linear-gradient(135deg, var(--danger), #dc2626);
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #ef4444 100%);
+            background-size: 200% 200%;
             color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
         }
 
         .btn-warning {
-            background: linear-gradient(135deg, var(--warning), #d97706);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #f59e0b 100%);
+            background-size: 200% 200%;
             color: var(--bg-dark);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .btn-warning:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.5);
         }
 
         .btn-secondary {
-            background: linear-gradient(135deg, #475569, #334155);
+            background: linear-gradient(135deg, #475569 0%, #334155 50%, #475569 100%);
+            background-size: 200% 200%;
             color: white;
+            box-shadow: 0 4px 15px rgba(71, 85, 105, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(71, 85, 105, 0.5);
         }
 
         .btn-home {
-            background: linear-gradient(135deg, var(--home), #2563eb);
+            background: linear-gradient(135deg, var(--home) 0%, #2563eb 50%, var(--home) 100%);
+            background-size: 200% 200%;
             color: white;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-home:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.5);
         }
 
         .btn-away {
-            background: linear-gradient(135deg, var(--away), #dc2626);
+            background: linear-gradient(135deg, var(--away) 0%, #dc2626 50%, var(--away) 100%);
+            background-size: 200% 200%;
             color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-away:hover {
+            background-position: 100% 100%;
+            box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
         }
 
         .btn-group {
@@ -490,13 +669,20 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--danger);
+            background: radial-gradient(circle at 30% 30%, #ff6b6b 0%, var(--danger) 100%);
             transition: all 0.3s ease;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
         }
 
         .status-dot.connected {
-            background: var(--success);
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            background: radial-gradient(circle at 30% 30%, #34d399 0%, var(--success) 100%);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 12px rgba(16, 185, 129, 0.6); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.9); }
         }
 
         .status-label {
@@ -513,11 +699,21 @@
         }
 
         .penalty-box {
-            background: var(--bg-input);
+            background: linear-gradient(
+                145deg,
+                rgba(15, 15, 25, 0.95) 0%,
+                rgba(20, 20, 35, 0.9) 100%
+            );
             padding: 16px 24px;
             border-radius: 12px;
             min-width: 160px;
             border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .penalty-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
         .penalty-box h3 {
@@ -552,19 +748,34 @@
         }
 
         input, select {
-            background: var(--bg-input);
+            background: linear-gradient(
+                180deg,
+                rgba(15, 15, 25, 0.95) 0%,
+                rgba(20, 20, 30, 0.9) 100%
+            );
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 10px 14px;
             color: var(--text);
             font-size: 0.9rem;
-            transition: all 0.2s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         input:focus, select:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1);
+            box-shadow:
+                0 0 0 3px rgba(0, 212, 255, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.2);
+            background: linear-gradient(
+                180deg,
+                rgba(20, 20, 35, 0.98) 0%,
+                rgba(25, 25, 40, 0.95) 100%
+            );
+        }
+
+        input:hover, select:hover {
+            border-color: rgba(255, 255, 255, 0.15);
         }
 
         /* Overlay Cards Grid */
@@ -575,15 +786,47 @@
         }
 
         .overlay-card {
-            background: var(--bg-input);
+            background: linear-gradient(
+                135deg,
+                rgba(15, 15, 25, 0.9) 0%,
+                rgba(20, 20, 35, 0.85) 100%
+            );
             padding: 16px;
             border-radius: 12px;
             border-left: 4px solid var(--primary);
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .overlay-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(
+                circle at top right,
+                rgba(0, 212, 255, 0.1) 0%,
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
         .overlay-card:hover {
-            background: rgba(30, 30, 45, 0.6);
+            background: linear-gradient(
+                135deg,
+                rgba(25, 25, 40, 0.95) 0%,
+                rgba(30, 30, 50, 0.9) 100%
+            );
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .overlay-card:hover::after {
+            opacity: 1;
         }
 
         .overlay-card h3 {
@@ -596,9 +839,10 @@
         .overlay-card code {
             font-size: 0.7rem;
             color: var(--text-dim);
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 6px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
+            padding: 3px 8px;
             border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         /* Full Width Cards */
@@ -618,17 +862,41 @@
         }
 
         .roster-section {
-            background: var(--bg-input);
+            background: linear-gradient(
+                145deg,
+                rgba(15, 15, 25, 0.95) 0%,
+                rgba(20, 20, 35, 0.9) 100%
+            );
             padding: 20px;
             border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .roster-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                135deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.02) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
         }
 
         .roster-section.home {
             border-left: 4px solid var(--home);
+            box-shadow: inset 0 0 30px rgba(59, 130, 246, 0.05);
         }
 
         .roster-section.away {
             border-left: 4px solid var(--away);
+            box-shadow: inset 0 0 30px rgba(239, 68, 68, 0.05);
         }
 
         .roster-section h3 {
@@ -802,8 +1070,8 @@
             </div>
         </div>
 
-        <!-- Simulator Controls -->
-        <div class="card">
+        <!-- Simulator Controls (hidden unless enabled via slap -simulation:enable) -->
+        <div class="card" id="simulatorCard" style="display: none;">
             <h2>Simulator</h2>
             <div class="controls">
                 <button class="btn btn-success" onclick="startSimulator()">Start</button>
@@ -997,7 +1265,7 @@
                     <div class="status-dot" id="serialConnected"></div>
                     <span class="status-label">Connected</span>
                 </div>
-                <div class="status-item">
+                <div class="status-item" id="simModeStatus" style="display: none;">
                     <div class="status-dot" id="serialSimMode"></div>
                     <span class="status-label">Sim Mode</span>
                 </div>
@@ -1021,9 +1289,98 @@
             <div class="controls">
                 <button class="btn btn-primary" onclick="serialApplyConfig()">Apply</button>
                 <button class="btn btn-secondary" onclick="serialRefreshPorts()">Refresh</button>
-                <button class="btn btn-warning" onclick="toggleSimMode()">Toggle Sim</button>
+                <button class="btn btn-warning" id="btnToggleSim" onclick="toggleSimMode()" style="display: none;">Toggle Sim</button>
             </div>
             <div id="serialInfo" style="margin-top: 12px; font-size: 0.8rem; color: var(--text-dim);"></div>
+
+            <!-- Verbose Serial Data Display -->
+            <details style="margin-top: 16px;">
+                <summary style="cursor: pointer; color: var(--primary); font-weight: 600; margin-bottom: 10px;">Verbose Serial Data</summary>
+                <div id="serialVerbose" style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.75rem;">
+                    <!-- Recording Controls -->
+                    <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <button id="btnRecordStart" class="btn btn-sm btn-success" onclick="startRecording()">Start Recording</button>
+                            <button id="btnRecordStop" class="btn btn-sm btn-danger" onclick="stopRecording()" style="display: none;">Stop Recording</button>
+                            <div id="recordingIndicator" style="display: none; color: var(--danger); animation: pulse 1s infinite;">
+                                ● RECORDING
+                            </div>
+                        </div>
+                        <div id="recordingInfo" style="color: var(--text-muted); font-size: 0.7rem;"></div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px;">
+                        <div>
+                            <span style="color: var(--text-muted);">Total Packets:</span>
+                            <span id="serialStatTotal" style="color: var(--success);">0</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted);">Valid:</span>
+                            <span id="serialStatValid" style="color: var(--success);">0</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted);">Clock (C):</span>
+                            <span id="serialStatClock" style="color: var(--primary);">0</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted);">Score (H):</span>
+                            <span id="serialStatScore" style="color: var(--primary);">0</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted);">Invalid:</span>
+                            <span id="serialStatInvalid" style="color: var(--danger);">0</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-muted);">Bytes:</span>
+                            <span id="serialStatBytes" style="color: var(--text);">0</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <span style="color: var(--text-muted);">Last Packet Type:</span>
+                        <span id="serialLastType" style="color: var(--warning);">-</span>
+                        <span style="color: var(--text-muted); margin-left: 12px;">Time:</span>
+                        <span id="serialLastTime" style="color: var(--text-dim);">-</span>
+                    </div>
+                    <div style="margin-bottom: 4px; color: var(--text-muted);">Last Raw Data (Hex):</div>
+                    <div id="serialRawHex" style="background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; word-break: break-all; color: var(--primary); min-height: 40px;">-</div>
+                    <div style="margin: 8px 0 4px; color: var(--text-muted);">Last Raw Data (ASCII):</div>
+                    <div id="serialRawAscii" style="background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; word-break: break-all; color: var(--success); min-height: 40px;">-</div>
+                </div>
+            </details>
+        </div>
+
+        <!-- System Status & Errors -->
+        <div class="card">
+            <h2>System</h2>
+            <div class="status-bar" style="margin-bottom: 16px;">
+                <div class="status-item">
+                    <span style="color: var(--text-muted);">Version:</span>
+                    <span id="sysVersion" style="color: var(--primary);">-</span>
+                </div>
+                <div class="status-item">
+                    <span style="color: var(--text-muted);">Memory:</span>
+                    <span id="sysMemory" style="color: var(--text);">-</span>
+                </div>
+            </div>
+            <div class="controls" style="margin-bottom: 16px;">
+                <button class="btn btn-primary" onclick="systemUpdate()">Update from GitHub</button>
+                <button class="btn btn-secondary" onclick="refreshSystemStatus()">Refresh</button>
+            </div>
+            <div id="systemUpdateStatus" style="margin-bottom: 12px; font-size: 0.85rem; color: var(--text-muted);"></div>
+
+            <!-- Error Log -->
+            <details>
+                <summary style="cursor: pointer; color: var(--danger); font-weight: 600; margin-bottom: 10px;">Error Log</summary>
+                <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 12px;">
+                    <div class="controls" style="margin-bottom: 12px;">
+                        <button class="btn btn-sm btn-secondary" onclick="refreshErrorLog()">Refresh</button>
+                        <button class="btn btn-sm btn-danger" onclick="clearErrorLog()">Clear Log</button>
+                    </div>
+                    <div id="errorLogContent" style="font-family: monospace; font-size: 0.7rem; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.4); padding: 8px; border-radius: 4px; color: var(--danger);">
+                        No errors logged.
+                    </div>
+                </div>
+            </details>
         </div>
 
         <!-- Broadcast Overlays Control -->
@@ -1732,9 +2089,17 @@
 
         function updateSerialUI() {
             updateStatus('serialConnected', serialState.connected);
-            updateStatus('serialSimMode', serialState.simulator_mode);
+
+            // Only update sim mode status if simulation is both enabled AND visible
+            const simActive = systemSettings.simulation_enabled && systemSettings.simulation_visible;
+            if (simActive) {
+                updateStatus('serialSimMode', serialState.simulator_mode);
+            }
+
             const info = document.getElementById('serialInfo');
-            if (serialState.simulator_mode) {
+
+            // Only show simulation mode text if simulation is both enabled AND visible
+            if (serialState.simulator_mode && simActive) {
                 info.textContent = 'Running in SIMULATION mode';
                 info.style.color = 'var(--warning)';
             } else if (serialState.connected) {
@@ -1742,7 +2107,7 @@
                 info.style.color = 'var(--success)';
             } else {
                 info.textContent = `Not connected. Port: ${serialState.configured_port || 'none'}`;
-                info.style.color = 'var(--danger)';
+                info.style.color = 'var(--text-muted)';
             }
             document.getElementById('serialBaudSelect').value = serialState.baudrate;
         }
@@ -1760,6 +2125,8 @@
         }
 
         async function toggleSimMode() {
+            // Only allow if simulation is both enabled AND visible
+            if (!systemSettings.simulation_enabled || !systemSettings.simulation_visible) return;
             await api('/simulator/start', 'POST');
             serialRefreshStatus();
         }
@@ -1767,6 +2134,195 @@
         serialRefreshStatus();
         serialRefreshPorts();
         setInterval(serialRefreshStatus, 5000);
+
+        // Verbose Serial Data
+        async function refreshVerboseSerialData() {
+            try {
+                const data = await api('/system/serial/data');
+                if (data.serial) {
+                    const s = data.serial;
+                    const stats = s.packet_stats || {};
+                    document.getElementById('serialStatTotal').textContent = stats.total_received || 0;
+                    document.getElementById('serialStatValid').textContent = stats.valid_packets || 0;
+                    document.getElementById('serialStatClock').textContent = stats.clock_packets || 0;
+                    document.getElementById('serialStatScore').textContent = stats.score_packets || 0;
+                    document.getElementById('serialStatInvalid').textContent = stats.invalid_packets || 0;
+                    document.getElementById('serialStatBytes').textContent = stats.bytes_received || 0;
+                    document.getElementById('serialLastType').textContent = stats.last_packet_type || '-';
+                    document.getElementById('serialLastTime').textContent = stats.last_packet_time ? new Date(stats.last_packet_time).toLocaleTimeString() : '-';
+                    document.getElementById('serialRawHex').textContent = s.last_raw_data || '-';
+                    document.getElementById('serialRawAscii').textContent = s.last_raw_ascii || '-';
+
+                    // Update recording UI
+                    updateRecordingUI(s.recording);
+                }
+            } catch (e) {
+                console.error('Failed to get verbose serial data:', e);
+            }
+        }
+
+        function updateRecordingUI(recording) {
+            const btnStart = document.getElementById('btnRecordStart');
+            const btnStop = document.getElementById('btnRecordStop');
+            const indicator = document.getElementById('recordingIndicator');
+            const info = document.getElementById('recordingInfo');
+
+            if (recording && recording.recording) {
+                btnStart.style.display = 'none';
+                btnStop.style.display = 'inline-block';
+                indicator.style.display = 'inline-block';
+                info.textContent = `Recording to: ${recording.path} (${recording.bytes_recorded} bytes)`;
+                info.style.color = 'var(--danger)';
+            } else {
+                btnStart.style.display = 'inline-block';
+                btnStop.style.display = 'none';
+                indicator.style.display = 'none';
+                if (recording && recording.path && recording.bytes_recorded > 0) {
+                    info.textContent = `Last recording: ${recording.path} (${recording.bytes_recorded} bytes)`;
+                    info.style.color = 'var(--success)';
+                } else {
+                    info.textContent = '';
+                }
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const result = await api('/system/serial/record/start', 'POST');
+                if (result.status === 'ok') {
+                    document.getElementById('recordingInfo').textContent = `Recording started: ${result.path}`;
+                    refreshVerboseSerialData();
+                } else {
+                    alert('Failed to start recording: ' + (result.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to start recording: ' + e.message);
+            }
+        }
+
+        async function stopRecording() {
+            try {
+                const result = await api('/system/serial/record/stop', 'POST');
+                if (result.status === 'ok' || result.status === 'stopped') {
+                    document.getElementById('recordingInfo').textContent = `Recording saved: ${result.path} (${result.bytes_recorded} bytes)`;
+                    document.getElementById('recordingInfo').style.color = 'var(--success)';
+                    refreshVerboseSerialData();
+                } else {
+                    alert('No active recording');
+                }
+            } catch (e) {
+                alert('Failed to stop recording: ' + e.message);
+            }
+        }
+
+        // Refresh verbose data when details is opened
+        document.querySelector('#serialVerbose')?.closest('details')?.addEventListener('toggle', (e) => {
+            if (e.target.open) refreshVerboseSerialData();
+        });
+        setInterval(() => {
+            const details = document.querySelector('#serialVerbose')?.closest('details');
+            if (details && details.open) refreshVerboseSerialData();
+        }, 2000);
+
+        // System Status & Settings
+        let systemSettings = {
+            simulation_enabled: false,
+            simulation_visible: false
+        };
+
+        async function refreshSystemStatus() {
+            try {
+                // Load both status and settings
+                const [status, settingsResult] = await Promise.all([
+                    api('/system/status'),
+                    api('/system/settings')
+                ]);
+
+                if (status.slap) {
+                    document.getElementById('sysVersion').textContent = status.slap.version || 'unknown';
+                }
+                if (status.system && status.system.memory_mb) {
+                    document.getElementById('sysMemory').textContent = status.system.memory_mb.toFixed(1) + ' MB';
+                }
+
+                // Merge status.slap with settings for complete picture
+                systemSettings = {
+                    ...(status.slap || {}),
+                    ...(settingsResult.settings || {})
+                };
+
+                // Show/hide simulator controls based on BOTH simulation_visible AND simulation_enabled
+                const simEnabled = systemSettings.simulation_enabled === true;
+                const simVisible = systemSettings.simulation_visible === true;
+                const showSimControls = simEnabled && simVisible;
+
+                const simCard = document.getElementById('simulatorCard');
+                const simModeStatus = document.getElementById('simModeStatus');
+                const btnToggleSim = document.getElementById('btnToggleSim');
+
+                if (simCard) simCard.style.display = showSimControls ? 'block' : 'none';
+                if (simModeStatus) simModeStatus.style.display = showSimControls ? 'flex' : 'none';
+                if (btnToggleSim) btnToggleSim.style.display = showSimControls ? 'inline-block' : 'none';
+
+                // Update serial UI to reflect current settings
+                updateSerialUI();
+            } catch (e) {
+                console.error('Failed to get system status:', e);
+            }
+        }
+
+        async function systemUpdate() {
+            const statusDiv = document.getElementById('systemUpdateStatus');
+            statusDiv.textContent = 'Updating from GitHub...';
+            statusDiv.style.color = 'var(--primary)';
+            try {
+                const result = await api('/system/update', 'POST');
+                if (result.status === 'ok') {
+                    statusDiv.textContent = result.message || 'Update complete!';
+                    statusDiv.style.color = 'var(--success)';
+                } else {
+                    statusDiv.textContent = 'Update failed: ' + (result.error || 'Unknown error');
+                    statusDiv.style.color = 'var(--danger)';
+                }
+            } catch (e) {
+                statusDiv.textContent = 'Update failed: ' + e.message;
+                statusDiv.style.color = 'var(--danger)';
+            }
+        }
+
+        async function refreshErrorLog() {
+            try {
+                const result = await api('/system/errors?lines=100');
+                const content = document.getElementById('errorLogContent');
+                if (result.errors && result.errors.length > 0) {
+                    content.innerHTML = result.errors.map(e => `<div style="margin-bottom: 4px; border-bottom: 1px solid rgba(255,0,0,0.2); padding-bottom: 4px;">${escapeHtml(e)}</div>`).join('');
+                } else {
+                    content.textContent = 'No errors logged.';
+                }
+            } catch (e) {
+                console.error('Failed to get error log:', e);
+            }
+        }
+
+        async function clearErrorLog() {
+            if (!confirm('Clear the error log?')) return;
+            try {
+                await api('/system/errors/clear', 'POST');
+                refreshErrorLog();
+            } catch (e) {
+                alert('Failed to clear error log');
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize system status
+        refreshSystemStatus();
+        setInterval(refreshSystemStatus, 30000);
 
         // Team Customization
         let teamConfig = {

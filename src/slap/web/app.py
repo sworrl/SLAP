@@ -418,6 +418,20 @@ def create_app(config_path=None) -> Flask:
         if _simulator is None:
             return jsonify({"error": "Simulator not available"}), 503
 
+        # Check if simulation is enabled in settings
+        settings_file = Path.home() / ".config" / "slap" / "settings.json"
+        simulation_enabled = False
+        if settings_file.exists():
+            try:
+                with open(settings_file) as f:
+                    settings = json.load(f)
+                simulation_enabled = settings.get("simulation_enabled", False)
+            except Exception:
+                pass
+
+        if not simulation_enabled:
+            return jsonify({"error": "Simulation mode is disabled. Enable via: slap -simulation:enable"}), 403
+
         _simulator.start()
         state.simulator_running = True
         return jsonify({"status": "ok"})
@@ -501,14 +515,29 @@ def create_app(config_path=None) -> Flask:
         old_mode = _current_mode
         _current_mode = new_mode
 
+        # Load settings to check if simulation is enabled
+        settings_file = Path.home() / ".config" / "slap" / "settings.json"
+        simulation_enabled = False
+        if settings_file.exists():
+            try:
+                with open(settings_file) as f:
+                    settings = json.load(f)
+                simulation_enabled = settings.get("simulation_enabled", False)
+            except Exception:
+                pass
+
         if new_mode == "preview":
-            # Switch to preview: start simulator, use mock CasparCG
-            if _simulator:
+            # Switch to preview: only start simulator if simulation is explicitly enabled
+            if _simulator and simulation_enabled:
                 _simulator.reset()
                 _simulator.start()
                 state.simulator_running = True
-            state.serial_connected = True  # Simulated
-            logger.info("Switched to PREVIEW mode")
+                state.serial_connected = True  # Simulated
+                logger.info("Switched to PREVIEW mode with simulator")
+            else:
+                # Preview mode without simulator - just for viewing
+                state.simulator_running = False
+                logger.info("Switched to PREVIEW mode (no simulator)")
 
         elif new_mode == "live":
             # Switch to live: stop simulator, connect to real hardware
@@ -1564,6 +1593,260 @@ def create_app(config_path=None) -> Flask:
             return jsonify({"error": "Both team1 and team2 are required"}), 400
         h2h = db.get_head_to_head(team1, team2)
         return jsonify({"status": "ok", **h2h})
+
+    # ============ System API ============
+
+    @app.route("/api/system/update", methods=["POST"])
+    def system_update():
+        """Update SLAP from GitHub."""
+        import subprocess
+        import os
+        from datetime import datetime
+
+        try:
+            script_dir = Path(__file__).parent.parent.parent.parent
+            git_dir = script_dir / ".git"
+
+            if not git_dir.exists():
+                return jsonify({"error": "Not a git repository"}), 400
+
+            # Pull from git
+            result = subprocess.run(
+                ["git", "pull", "origin", "main"],
+                cwd=str(script_dir),
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            if result.returncode != 0:
+                return jsonify({
+                    "error": "Git pull failed",
+                    "details": result.stderr
+                }), 500
+
+            # Update Python dependencies
+            venv_pip = script_dir.parent / "venv" / "bin" / "pip"
+            if not venv_pip.exists():
+                venv_pip = Path.home() / ".local" / "share" / "slap" / "venv" / "bin" / "pip"
+
+            requirements = script_dir / "src" / "requirements.txt"
+            if venv_pip.exists() and requirements.exists():
+                subprocess.run(
+                    [str(venv_pip), "install", "--quiet", "-r", str(requirements)],
+                    timeout=120
+                )
+
+            # Update settings
+            settings_file = Path.home() / ".config" / "slap" / "settings.json"
+            if settings_file.exists():
+                with open(settings_file) as f:
+                    settings = json.load(f)
+                settings["last_update"] = datetime.now().isoformat()
+                with open(settings_file, "w") as f:
+                    json.dump(settings, f, indent=2)
+
+            return jsonify({
+                "status": "ok",
+                "message": "Update successful. Restart SLAP to apply changes.",
+                "output": result.stdout
+            })
+
+        except subprocess.TimeoutExpired:
+            return jsonify({"error": "Update timed out"}), 500
+        except Exception as e:
+            logger.error(f"Update failed: {e}")
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/errors", methods=["GET"])
+    def get_error_log():
+        """Get the error log."""
+        error_log = Path.home() / ".local" / "share" / "slap" / "logs" / "error.log"
+
+        lines = request.args.get("lines", 100, type=int)
+
+        if not error_log.exists():
+            return jsonify({"status": "ok", "errors": [], "message": "No errors logged"})
+
+        try:
+            content = error_log.read_text()
+            log_lines = content.strip().split("\n")[-lines:]
+            return jsonify({"status": "ok", "errors": log_lines})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/errors/clear", methods=["POST"])
+    def clear_error_log():
+        """Clear the error log."""
+        error_log = Path.home() / ".local" / "share" / "slap" / "logs" / "error.log"
+
+        try:
+            if error_log.exists():
+                error_log.write_text("")
+            return jsonify({"status": "ok", "message": "Error log cleared"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/settings", methods=["GET"])
+    def get_settings():
+        """Get system settings."""
+        settings_file = Path.home() / ".config" / "slap" / "settings.json"
+
+        defaults = {
+            "port": 9876,
+            "hostname": "slap.localhost",
+            "https_enabled": False,
+            "simulation_enabled": False,
+            "simulation_visible": False,
+            "serial_port": None,
+            "debug_mode": False,
+            "tray_enabled": True,
+        }
+
+        if settings_file.exists():
+            try:
+                with open(settings_file) as f:
+                    settings = json.load(f)
+                # Merge with defaults
+                for key, value in defaults.items():
+                    if key not in settings:
+                        settings[key] = value
+                return jsonify({"status": "ok", "settings": settings})
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+        return jsonify({"status": "ok", "settings": defaults})
+
+    @app.route("/api/system/settings", methods=["POST"])
+    def update_settings():
+        """Update system settings."""
+        settings_file = Path.home() / ".config" / "slap" / "settings.json"
+        settings_file.parent.mkdir(parents=True, exist_ok=True)
+
+        data = request.get_json() or {}
+
+        # Load existing settings
+        settings = {}
+        if settings_file.exists():
+            try:
+                with open(settings_file) as f:
+                    settings = json.load(f)
+            except Exception:
+                pass
+
+        # Update with new values
+        for key, value in data.items():
+            settings[key] = value
+
+        try:
+            with open(settings_file, "w") as f:
+                json.dump(settings, f, indent=2)
+            return jsonify({"status": "ok", "settings": settings})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/status", methods=["GET"])
+    def get_system_status():
+        """Get system status information."""
+        import os
+        import platform
+
+        settings_file = Path.home() / ".config" / "slap" / "settings.json"
+        settings = {}
+        if settings_file.exists():
+            try:
+                with open(settings_file) as f:
+                    settings = json.load(f)
+            except Exception:
+                pass
+
+        # Get process info
+        pid = os.getpid()
+        try:
+            import resource
+            mem_usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024  # MB
+        except Exception:
+            mem_usage = None
+
+        return jsonify({
+            "status": "ok",
+            "system": {
+                "platform": platform.system(),
+                "python_version": platform.python_version(),
+                "pid": pid,
+                "memory_mb": mem_usage,
+            },
+            "slap": {
+                "version": settings.get("version", "unknown"),
+                "simulation_enabled": settings.get("simulation_enabled", False),
+                "simulation_visible": settings.get("simulation_visible", False),
+                "https_enabled": settings.get("https_enabled", False),
+                "last_update": settings.get("last_update"),
+            }
+        })
+
+    @app.route("/api/system/serial/data", methods=["GET"])
+    def get_serial_data():
+        """Get detailed serial port data for verbose display."""
+        from ..parser.mp70 import get_last_raw_data, get_packet_stats, get_recording_status
+
+        try:
+            raw_data = get_last_raw_data()
+            stats = get_packet_stats()
+            recording = get_recording_status()
+
+            return jsonify({
+                "status": "ok",
+                "serial": {
+                    "connected": _serial_port is not None,
+                    "reader_active": _serial_reader_active,
+                    "last_raw_data": raw_data.hex() if raw_data else None,
+                    "last_raw_ascii": raw_data.decode('ascii', errors='replace') if raw_data else None,
+                    "packet_stats": stats,
+                    "recording": recording,
+                }
+            })
+        except Exception as e:
+            return jsonify({
+                "status": "ok",
+                "serial": {
+                    "connected": _serial_port is not None,
+                    "reader_active": _serial_reader_active,
+                    "error": str(e)
+                }
+            })
+
+    @app.route("/api/system/serial/record/start", methods=["POST"])
+    def start_serial_recording():
+        """Start recording serial data to a file."""
+        from ..parser.mp70 import start_recording
+
+        data = request.get_json() or {}
+        filepath = data.get("filepath")
+
+        try:
+            path = start_recording(filepath)
+            return jsonify({"status": "ok", "path": path, "message": "Recording started"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/serial/record/stop", methods=["POST"])
+    def stop_serial_recording():
+        """Stop recording serial data."""
+        from ..parser.mp70 import stop_recording
+
+        try:
+            result = stop_recording()
+            return jsonify({"status": "ok", **result})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/api/system/serial/record/status", methods=["GET"])
+    def get_serial_recording_status():
+        """Get serial recording status."""
+        from ..parser.mp70 import get_recording_status
+
+        return jsonify({"status": "ok", **get_recording_status()})
 
     # ============ WebSocket Events ============
 
