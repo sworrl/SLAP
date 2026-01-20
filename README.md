@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-brightgreen?style=for-the-badge" alt="Version 2.1.0">
+  <img src="https://img.shields.io/badge/Version-2.2.0-brightgreen?style=for-the-badge" alt="Version 2.2.0">
   <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge" alt="GPL-3.0">
   <img src="https://img.shields.io/badge/CasparCG-Ready-orange?style=for-the-badge" alt="CasparCG">
@@ -36,7 +36,7 @@
 <details>
 <summary>Click to expand</summary>
 
-- [🆕 What's New in v2.1.0](#-whats-new-in-v210)
+- [🆕 What's New in v2.2.0](#-whats-new-in-v220)
 - [🎯 Overview](#-overview)
   - [System Architecture](#system-architecture)
   - [Multi-Machine Setup](#multi-machine-setup-recommended)
@@ -85,7 +85,7 @@
 
 ---
 
-## 🆕 What's New in v2.1.0
+## 🆕 What's New in v2.2.0
 
 > **Release Date:** January 2026
 
@@ -93,15 +93,16 @@
 
 | Change | Description |
 |--------|-------------|
+| 🔌 **Serial Port Control** | Connect/Disconnect buttons to release serial port for other applications |
+| ⏱️ **Manual Clock Mode** | Scorebug clock only updates from actual serial data - no auto-countdown |
+| 📊 **Raw Serial Display** | Verbose console shows ALL incoming serial data, not just MP-70 packets |
 | 🎨 **Modern UI** | Refreshed dashboard with glass morphism, gradients, and subtle textures |
-| 🔧 **Simulation Fix** | Simulation mode no longer auto-starts when disabled - runs in true web-only mode |
-| 🌐 **Web-Only Mode** | Server runs cleanly without serial hardware or simulation when not configured |
-| ⚙️ **Settings Enforcement** | API endpoints properly check `simulation_enabled` before starting simulator |
-| 🎛️ **Cleaner Controls** | Simulation controls only appear when explicitly enabled via CLI |
+| 🔧 **Simulation Fix** | Simulation mode no longer auto-starts when disabled |
+| 🎛️ **Simplified Interface** | Removed Preview/Live toggle, cleaner controls |
 
 ### Upgrade Notes
 
-If upgrading from v2.0.0:
+If upgrading from v2.1.0:
 ```bash
 cd /path/to/SLAP
 git pull
