@@ -1823,7 +1823,22 @@
             const options = { method, headers: { 'Content-Type': 'application/json' } };
             if (data) options.body = JSON.stringify(data);
             const response = await fetch(`/api${endpoint}`, options);
-            return response.json();
+
+            // Check content type before parsing
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Server error: ${text.substring(0, 100)}`);
+            }
+
+            const result = await response.json();
+
+            // If response not OK, throw with error message
+            if (!response.ok) {
+                throw new Error(result.error || `HTTP ${response.status}`);
+            }
+
+            return result;
         }
 
         // Control functions

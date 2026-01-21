@@ -28,8 +28,125 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import pwd
+import grp
 from pathlib import Path
 from datetime import datetime
+
+# ============================================================================
+# User Detection (handles sudo correctly)
+# ============================================================================
+
+def get_real_user():
+    """Get the real user even when running with sudo."""
+    # Check for SUDO_USER first (set when using sudo)
+    sudo_user = os.environ.get('SUDO_USER')
+    if sudo_user and sudo_user != 'root':
+        return sudo_user
+
+    # Check LOGNAME or USER
+    for var in ['LOGNAME', 'USER']:
+        user = os.environ.get(var)
+        if user and user != 'root':
+            return user
+
+    # Fall back to current user
+    try:
+        return pwd.getpwuid(os.getuid()).pw_name
+    except:
+        return 'root'
+
+
+def get_real_home():
+    """Get the real user's home directory even when running with sudo."""
+    user = get_real_user()
+    if user == 'root':
+        return Path('/root')
+
+    # Get home from passwd database
+    try:
+        return Path(pwd.getpwnam(user).pw_dir)
+    except KeyError:
+        # Fallback to /home/user
+        return Path(f'/home/{user}')
+
+
+def get_real_uid_gid():
+    """Get the real user's UID and GID."""
+    user = get_real_user()
+    try:
+        pw = pwd.getpwnam(user)
+        return pw.pw_uid, pw.pw_gid
+    except KeyError:
+        return os.getuid(), os.getgid()
+
+
+def chown_to_user(path, recursive=False):
+    """Change ownership of a path to the real user."""
+    uid, gid = get_real_uid_gid()
+    try:
+        if recursive and path.is_dir():
+            for root, dirs, files in os.walk(path):
+                os.chown(root, uid, gid)
+                for d in dirs:
+                    os.chown(os.path.join(root, d), uid, gid)
+                for f in files:
+                    os.chown(os.path.join(root, f), uid, gid)
+        else:
+            os.chown(path, uid, gid)
+    except Exception as e:
+        # Silently ignore permission errors (non-root)
+        pass
+
+
+def get_ubuntu_version():
+    """Get Ubuntu version number or None if not Ubuntu."""
+    try:
+        with open('/etc/os-release') as f:
+            content = f.read()
+        for line in content.split('\n'):
+            if line.startswith('VERSION_ID='):
+                return line.split('=')[1].strip('"')
+    except:
+        pass
+    return None
+
+
+def get_nginx_version():
+    """Get nginx version or None if not installed."""
+    try:
+        result = subprocess.run(['nginx', '-v'], capture_output=True, text=True)
+        # nginx version is in stderr
+        version_str = result.stderr.strip()
+        # Parse "nginx version: nginx/1.18.0"
+        if 'nginx/' in version_str:
+            version = version_str.split('nginx/')[1].split()[0]
+            return version
+    except:
+        pass
+    return None
+
+
+def nginx_supports_http2_directive():
+    """Check if nginx supports the 'http2 on;' directive (1.25.1+)."""
+    version = get_nginx_version()
+    if not version:
+        return False
+    try:
+        parts = version.split('.')
+        major, minor = int(parts[0]), int(parts[1])
+        patch = int(parts[2]) if len(parts) > 2 else 0
+        # http2 on; directive available in 1.25.1+
+        if major > 1 or (major == 1 and minor > 25) or (major == 1 and minor == 25 and patch >= 1):
+            return True
+    except:
+        pass
+    return False
+
+
+# Determine real user's home for path configuration
+REAL_USER = get_real_user()
+REAL_HOME = get_real_home()
 
 # ============================================================================
 # Configuration
@@ -46,16 +163,17 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 SRC_DIR = SCRIPT_DIR / "src"
 
 # Installation directories (non-web-hosted, secure)
+# Use REAL_HOME to handle sudo correctly - installs to actual user's home, not root's
 if os.name == 'nt':  # Windows
-    DATA_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "slap"
+    DATA_DIR = Path(os.environ.get("LOCALAPPDATA", REAL_HOME / "AppData" / "Local")) / "slap"
     CONFIG_DIR = DATA_DIR / "config"
     LOG_DIR = DATA_DIR / "logs"
-    BIN_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Programs" / "slap"
+    BIN_DIR = Path(os.environ.get("LOCALAPPDATA", REAL_HOME / "AppData" / "Local")) / "Programs" / "slap"
 else:  # Linux/macOS
-    DATA_DIR = Path.home() / ".local" / "share" / "slap"
-    CONFIG_DIR = Path.home() / ".config" / "slap"
+    DATA_DIR = REAL_HOME / ".local" / "share" / "slap"
+    CONFIG_DIR = REAL_HOME / ".config" / "slap"
     LOG_DIR = DATA_DIR / "logs"
-    BIN_DIR = Path.home() / ".local" / "bin"
+    BIN_DIR = REAL_HOME / ".local" / "bin"
 
 VENV_DIR = DATA_DIR / "venv"
 DB_DIR = DATA_DIR / "db"
@@ -111,6 +229,16 @@ class Colors:
 
 def print_banner():
     """Print the SLAP installation banner."""
+    # Detect system info
+    ubuntu_ver = get_ubuntu_version()
+    nginx_ver = get_nginx_version()
+    system_info = []
+    if ubuntu_ver:
+        system_info.append(f"Ubuntu {ubuntu_ver}")
+    if nginx_ver:
+        system_info.append(f"nginx {nginx_ver}")
+    system_line = f"  ({', '.join(system_info)})" if system_info else ""
+
     print(f"""
 {Colors.CYAN}{Colors.BOLD}
 ╔═══════════════════════════════════════════════════════════════╗
@@ -127,6 +255,7 @@ def print_banner():
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
 {Colors.NC}
+{Colors.CYAN}Installing for user: {REAL_USER}{system_line}{Colors.NC}
 """)
 
 
@@ -459,6 +588,9 @@ def create_venv():
         print_status("Failed to create virtual environment", "error")
         return False
 
+    # Fix ownership if running with sudo
+    chown_to_user(VENV_DIR, recursive=True)
+
     print_status("Virtual environment created", "success")
     return True
 
@@ -514,9 +646,11 @@ def load_settings():
 def save_settings(settings):
     """Save settings to file."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    chown_to_user(CONFIG_DIR)
     try:
         with open(SETTINGS_FILE, "w") as f:
             json.dump(settings, f, indent=2)
+        chown_to_user(SETTINGS_FILE)
         return True
     except Exception as e:
         print_status(f"Error saving settings: {e}", "error")
@@ -531,6 +665,11 @@ def setup_directories():
     """Create necessary directories."""
     print_header("Setting Up Directories")
 
+    # Show detected user info
+    if REAL_USER != 'root':
+        print_status(f"Installing for user: {REAL_USER}", "info")
+        print_status(f"Home directory: {REAL_HOME}", "info")
+
     directories = [
         DATA_DIR,
         CONFIG_DIR,
@@ -541,6 +680,7 @@ def setup_directories():
 
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
+        chown_to_user(directory, recursive=True)
         print_status(f"Created: {directory}", "success")
 
     return True
@@ -582,6 +722,7 @@ exec "$PYTHON_PATH" "$SLAP_CLI" "$@"
     try:
         slap_script.write_text(script_content)
         slap_script.chmod(0o755)
+        chown_to_user(slap_script)
         print_status(f"Created command: {slap_script}", "success")
     except Exception as e:
         print_status(f"Failed to create slap command: {e}", "error")
@@ -592,11 +733,11 @@ exec "$PYTHON_PATH" "$SLAP_CLI" "$@"
     if str(BIN_DIR) not in path_dirs:
         print_status(f"Add to your PATH: export PATH=\"{BIN_DIR}:$PATH\"", "warning")
 
-        # Try to add to shell profile
+        # Try to add to shell profile (use REAL_HOME for sudo compatibility)
         shell_profiles = [
-            Path.home() / ".bashrc",
-            Path.home() / ".zshrc",
-            Path.home() / ".profile",
+            REAL_HOME / ".bashrc",
+            REAL_HOME / ".zshrc",
+            REAL_HOME / ".profile",
         ]
 
         path_line = f'\n# SLAP - Added by installer\nexport PATH="{BIN_DIR}:$PATH"\n'
@@ -620,8 +761,10 @@ def create_desktop_entry():
     """Create a desktop entry for the start menu."""
     print_header("Creating Start Menu Entry")
 
-    applications_dir = Path.home() / ".local" / "share" / "applications"
+    # Use REAL_HOME for sudo compatibility
+    applications_dir = REAL_HOME / ".local" / "share" / "applications"
     applications_dir.mkdir(parents=True, exist_ok=True)
+    chown_to_user(applications_dir)
 
     desktop_file = applications_dir / "slap.desktop"
     icon_path = SCRIPT_DIR / "src" / "slap" / "web" / "static" / "img" / "SLAP_icon.webp"
@@ -656,6 +799,7 @@ Exec=bash -c "{BIN_DIR}/slap status; read -p 'Press Enter...'"
     try:
         desktop_file.write_text(desktop_content)
         desktop_file.chmod(0o755)
+        chown_to_user(desktop_file)
         print_status(f"Created: {desktop_file}", "success")
 
         # Update desktop database
@@ -1211,9 +1355,8 @@ server {{
 }}
 
 server {{
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {hostname};
 
     ssl_certificate {SSL_DIR}/cert.pem;
@@ -1768,10 +1911,8 @@ server {{
 }}
 
 server {{
-    listen 443 ssl;
-    listen [::]:443 ssl;
-    http2 on;
-
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
     server_name {hostname};
 
     ssl_certificate {SSL_DIR}/cert.pem;
@@ -1846,8 +1987,10 @@ def create_systemd_service():
         print_status("systemctl not found, skipping service setup", "warning")
         return True
 
-    service_dir = Path.home() / ".config" / "systemd" / "user"
+    # Use REAL_HOME for sudo compatibility
+    service_dir = REAL_HOME / ".config" / "systemd" / "user"
     service_dir.mkdir(parents=True, exist_ok=True)
+    chown_to_user(service_dir, recursive=True)
 
     service_file = service_dir / "slap.service"
     python_path = VENV_DIR / "bin" / "python"
@@ -1861,7 +2004,7 @@ After=network.target
 
 [Service]
 Type=simple
-Environment=HOME={Path.home()}
+Environment=HOME={REAL_HOME}
 WorkingDirectory={SRC_DIR}
 ExecStart={python_path} run.py --port {port}
 Restart=on-failure
@@ -1872,12 +2015,21 @@ WantedBy=default.target
 '''
 
     service_file.write_text(service_content)
+    chown_to_user(service_file)
     print_status(f"Service file created: {service_file}", "success")
 
-    # Reload and enable
-    run_cmd(["systemctl", "--user", "daemon-reload"])
-    run_cmd(["systemctl", "--user", "enable", "slap"])
-    print_status("Service enabled for autostart", "success")
+    # Reload and enable - need to run as real user if we used sudo
+    uid, gid = get_real_uid_gid()
+    if os.getuid() == 0 and uid != 0:
+        # Running as root but installing for non-root user
+        # Use sudo -u to run systemctl as the real user
+        run_cmd(["sudo", "-u", REAL_USER, "systemctl", "--user", "daemon-reload"], check=False)
+        run_cmd(["sudo", "-u", REAL_USER, "systemctl", "--user", "enable", "slap"], check=False)
+        print_status("Service enabled (run 'systemctl --user start slap' as your user)", "success")
+    else:
+        run_cmd(["systemctl", "--user", "daemon-reload"])
+        run_cmd(["systemctl", "--user", "enable", "slap"])
+        print_status("Service enabled for autostart", "success")
 
     return True
 
@@ -1900,7 +2052,7 @@ def uninstall(password=None):
     run_cmd(["pkill", "-f", "slap_tray"], check=False)
 
     # Remove service file
-    service_file = Path.home() / ".config" / "systemd" / "user" / "slap.service"
+    service_file = REAL_HOME / ".config" / "systemd" / "user" / "slap.service"
     if service_file.exists():
         service_file.unlink()
         print_status("Removed systemd service", "success")

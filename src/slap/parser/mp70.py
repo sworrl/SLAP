@@ -110,7 +110,12 @@ def start_recording(filepath: Optional[str] = None) -> str:
             log_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "slap" / "logs"
         else:
             log_dir = Path.home() / ".local" / "share" / "slap" / "logs"
-        log_dir.mkdir(parents=True, exist_ok=True)
+
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            raise PermissionError(f"Cannot create logs directory: {log_dir}. Check permissions.")
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         _recording_path = str(log_dir / f"serial_recording_{timestamp}.bin")
 
@@ -120,6 +125,9 @@ def start_recording(filepath: Optional[str] = None) -> str:
         _recording_bytes = 0
         logger.info(f"Started serial recording to: {_recording_path}")
         return _recording_path
+    except PermissionError:
+        _recording_path = None
+        raise PermissionError(f"Cannot write to: {_recording_path}. Check permissions.")
     except Exception as e:
         logger.error(f"Failed to start recording: {e}")
         _recording_path = None
