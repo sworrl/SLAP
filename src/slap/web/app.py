@@ -6,6 +6,8 @@ Flask-based web interface with WebSocket support for real-time updates.
 
 import json
 import logging
+import threading
+import time
 from flask import Flask, render_template, jsonify, request, send_from_directory
 from flask_socketio import SocketIO, emit
 from pathlib import Path
@@ -24,6 +26,8 @@ _caspar_client = None
 _obs_client = None
 _serial_port = None
 _serial_reader_active = False
+_serial_reader_thread = None
+_serial_reader_stop_event = None
 
 # Mode: "preview" or "live"
 _current_mode = "preview"
@@ -62,6 +66,91 @@ def set_mode(mode):
     """Set the operating mode."""
     global _current_mode
     _current_mode = mode
+
+
+def _web_serial_reader(serial_port, stop_event):
+    """Serial reader thread for web-initiated connections."""
+    global _serial_reader_active
+    from ..parser.mp70 import MP70Parser, update_raw_data
+    from ..core.hockey import HockeyLogic
+
+    reader_logger = logging.getLogger("web_serial_reader")
+    parser = MP70Parser()
+    hockey_logic = HockeyLogic()
+    buffer = bytearray()
+
+    reader_logger.info("Web serial reader started")
+    _serial_reader_active = True
+
+    try:
+        while not stop_event.is_set():
+            if serial_port and serial_port.is_open and serial_port.in_waiting > 0:
+                try:
+                    data = serial_port.read(min(512, serial_port.in_waiting))
+                    buffer.extend(data)
+                    update_raw_data(data)
+                    reader_logger.debug(f"RX ({len(data)} bytes): {data.hex(' ')}")
+
+                    packets, buffer = parser.extract_packets(buffer)
+                    for packet in packets:
+                        game_data = parser.parse(packet)
+                        if game_data:
+                            state.update_game(
+                                home_score=game_data.home_score,
+                                away_score=game_data.away_score,
+                                period=game_data.period,
+                                clock=game_data.clock,
+                                home_penalties=game_data.home_penalties,
+                                away_penalties=game_data.away_penalties
+                            )
+                            event = hockey_logic.process_update(game_data.to_dict())
+                            if event and event.startswith("GOAL_"):
+                                side = event.replace("GOAL_", "")
+                                reader_logger.info(f"GOAL detected: {side}")
+                                state.update_game(last_goal=side)
+                                if _caspar_client:
+                                    _caspar_client.trigger_goal(side)
+                            if _caspar_client and _caspar_client.connected:
+                                _caspar_client.update_scorebug(game_data.to_dict())
+                except Exception as e:
+                    reader_logger.error(f"Serial read error: {e}")
+                    time.sleep(1)
+            time.sleep(0.01)
+    except Exception as e:
+        reader_logger.error(f"Web serial reader critical error: {e}")
+    finally:
+        _serial_reader_active = False
+        reader_logger.info("Web serial reader stopped")
+
+
+def _start_serial_reader():
+    """Start the background serial reader thread."""
+    global _serial_reader_thread, _serial_reader_stop_event
+    _stop_serial_reader()
+
+    if _serial_port is None:
+        return
+
+    _serial_reader_stop_event = threading.Event()
+    _serial_reader_thread = threading.Thread(
+        target=_web_serial_reader,
+        args=(_serial_port, _serial_reader_stop_event),
+        daemon=True
+    )
+    _serial_reader_thread.start()
+    logger.info("Serial reader thread started")
+
+
+def _stop_serial_reader():
+    """Stop the background serial reader thread."""
+    global _serial_reader_thread, _serial_reader_stop_event
+    if _serial_reader_stop_event:
+        _serial_reader_stop_event.set()
+    if _serial_reader_thread and _serial_reader_thread.is_alive():
+        _serial_reader_thread.join(timeout=2.0)
+        logger.info("Serial reader thread stopped")
+    _serial_reader_thread = None
+    _serial_reader_stop_event = None
 
 
 def create_app(config_path=None) -> Flask:
@@ -1212,6 +1301,7 @@ def create_app(config_path=None) -> Flask:
             "configured_port": config.serial.port,
             "baudrate": config.serial.baudrate,
             "connected": state.serial_connected,
+            "reader_active": _serial_reader_active,
             "simulator_mode": config.simulator.enabled
         })
 
@@ -1235,13 +1325,16 @@ def create_app(config_path=None) -> Flask:
 
     @app.route("/api/serial/disconnect", methods=["POST"])
     def serial_disconnect():
-        """Disconnect/release the serial port so other apps can use it."""
+        """Disconnect/release the serial port and stop reader thread."""
         global _serial_port
 
         if _serial_port is None:
             return jsonify({"status": "ok", "message": "Serial port already disconnected"})
 
         try:
+            # Stop reader thread first
+            _stop_serial_reader()
+
             if hasattr(_serial_port, 'close'):
                 _serial_port.close()
             _serial_port = None
@@ -1254,14 +1347,15 @@ def create_app(config_path=None) -> Flask:
 
     @app.route("/api/serial/connect", methods=["POST"])
     def serial_connect():
-        """Connect/open the configured serial port."""
+        """Connect/open the configured serial port and start reader thread."""
         global _serial_port
 
         config = get_config()
         if not config.serial.port:
             return jsonify({"error": "No serial port configured"}), 400
 
-        # Close existing connection if any
+        # Stop existing reader and close port if any
+        _stop_serial_reader()
         if _serial_port is not None:
             try:
                 if hasattr(_serial_port, 'close'):
@@ -1277,10 +1371,14 @@ def create_app(config_path=None) -> Flask:
                 timeout=config.serial.timeout if hasattr(config.serial, 'timeout') else 0.1
             )
             state.serial_connected = True
-            logger.info(f"Serial port connected: {config.serial.port}")
+
+            # Start reader thread to process incoming data
+            _start_serial_reader()
+
+            logger.info(f"Serial port connected with reader: {config.serial.port}")
             return jsonify({
                 "status": "ok",
-                "message": f"Connected to {config.serial.port}",
+                "message": f"Connected to {config.serial.port} (reader started)",
                 "port": config.serial.port,
                 "baudrate": config.serial.baudrate
             })
