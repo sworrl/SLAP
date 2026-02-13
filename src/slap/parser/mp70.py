@@ -293,14 +293,19 @@ class MP70Parser:
         # This allows seeing ALL serial data, not just valid MP-70 packets
 
         if len(packet) < MIN_PACKET_LENGTH:
-            logger.debug(f"Packet too short: {len(packet)} < {MIN_PACKET_LENGTH}")
+            logger.warning(f"Packet too short: {len(packet)} bytes < {MIN_PACKET_LENGTH} required. "
+                          f"Hex: {packet[:40].hex(' ')}{'...' if len(packet) > 40 else ''}")
+            try:
+                logger.warning(f"  ASCII: {packet.decode('ascii', errors='replace')}")
+            except Exception:
+                pass
             record_packet("?", valid=False)
             return None
 
         try:
             packet_type = chr(packet[1])
         except (IndexError, ValueError):
-            logger.warning("Failed to read packet type byte")
+            logger.warning(f"Failed to read packet type byte. Hex: {packet[:20].hex(' ')}")
             record_packet("?", valid=False)
             return None
 
@@ -350,7 +355,9 @@ class MP70Parser:
                 logger.warning(f"Failed to parse score packet: {e}")
                 return None
 
-        logger.debug(f"Unknown packet type: {packet_type}")
+        logger.warning(f"Unknown packet type: '{packet_type}' (0x{packet[1]:02x}), "
+                      f"len={len(packet)}. First 40 bytes hex: {packet[:40].hex(' ')}")
+        record_packet(packet_type, valid=False)
         return None
 
     def extract_packets(self, buffer: bytearray) -> tuple[list[bytes], bytearray]:

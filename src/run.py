@@ -25,14 +25,51 @@ from slap.simulator.fake_serial import FakeSerial
 from slap.web.app import create_app, socketio, set_simulator, set_caspar_client, set_serial_port
 
 
-def setup_logging(debug: bool = False):
-    """Configure logging."""
+def setup_logging(debug: bool = False, log_file_path: str = None):
+    """Configure logging to console and file.
+
+    Args:
+        debug: Enable debug-level logging
+        log_file_path: Explicit log file path. If None, defaults to:
+                       - Debug mode: ./slap_debug.log (current directory)
+                       - Normal mode: ~/.local/share/slap/logs/slap.log
+    """
+    import os
     level = logging.DEBUG if debug else logging.INFO
+    fmt = '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    datefmt = '%H:%M:%S'
+
     logging.basicConfig(
         level=level,
-        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-        datefmt='%H:%M:%S'
+        format=fmt,
+        datefmt=datefmt
     )
+
+    # Determine log file location
+    if log_file_path:
+        log_file = Path(log_file_path)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+    elif debug:
+        # Debug mode: drop log right in the current directory for easy access
+        log_file = Path.cwd() / "slap_debug.log"
+    else:
+        # Normal mode: standard app data location
+        if os.name == 'nt':
+            log_dir = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "slap" / "logs"
+        else:
+            log_dir = Path.home() / ".local" / "share" / "slap" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "slap.log"
+
+    file_handler = logging.FileHandler(str(log_file), mode='a')
+    file_handler.setLevel(level)
+    file_handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+    logging.getLogger().addHandler(file_handler)
+
+    init_logger = logging.getLogger("slap")
+    init_logger.info(f"Log file: {log_file}")
+    if debug:
+        init_logger.info("DEBUG mode enabled - verbose logging active")
 
 
 def run_serial_reader(serial_port, parser, hockey_logic, caspar_client, stop_event):
@@ -145,6 +182,11 @@ def main():
         help="Serial port device (e.g., /dev/ttyUSB0 or COM3)",
         default=None
     )
+    parser.add_argument(
+        "--log-file",
+        help="Path for log file (default: ./slap_debug.log in debug mode)",
+        default=None
+    )
 
     args = parser.parse_args()
 
@@ -166,7 +208,7 @@ def main():
     set_config(config)
 
     # Setup logging
-    setup_logging(config.debug)
+    setup_logging(config.debug, log_file_path=args.log_file)
     logger = logging.getLogger("slap")
 
     logger.info("=" * 50)
