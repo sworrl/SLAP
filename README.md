@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.2.0-brightgreen?style=for-the-badge" alt="Version 2.2.0">
+  <img src="https://img.shields.io/badge/Version-2.3.0-brightgreen?style=for-the-badge" alt="Version 2.3.0">
   <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.8+">
   <img src="https://img.shields.io/badge/License-GPL%20v3-blue?style=for-the-badge" alt="GPL-3.0">
   <img src="https://img.shields.io/badge/CasparCG-Ready-orange?style=for-the-badge" alt="CasparCG">
@@ -36,7 +36,7 @@
 <details>
 <summary>Click to expand</summary>
 
-- [🆕 What's New in v2.2.0](#-whats-new-in-v220)
+- [🆕 What's New in v2.3.0](#-whats-new-in-v230)
 - [🎯 Overview](#-overview)
   - [System Architecture](#system-architecture)
   - [Multi-Machine Setup](#multi-machine-setup-recommended)
@@ -85,24 +85,27 @@
 
 ---
 
-## 🆕 What's New in v2.2.0
+## 🆕 What's New in v2.3.0
 
-> **Release Date:** January 2026
+> **Release Date:** February 2026
 
 ### Highlights
 
 | Change | Description |
 |--------|-------------|
-| 🔌 **Serial Port Control** | Connect/Disconnect buttons to release serial port for other applications |
-| ⏱️ **Manual Clock Mode** | Scorebug clock only updates from actual serial data - no auto-countdown |
-| 📊 **Raw Serial Display** | Verbose console shows ALL incoming serial data, not just MP-70 packets |
-| 🎨 **Modern UI** | Refreshed dashboard with glass morphism, gradients, and subtle textures |
-| 🔧 **Simulation Fix** | Simulation mode no longer auto-starts when disabled |
-| 🎛️ **Simplified Interface** | Removed Preview/Live toggle, cleaner controls |
+| 🧠 **Adaptive Protocol Parser** | Complete parser rewrite with 5 parsing strategies - auto-detects unknown packet formats from real hardware |
+| 🔒 **Strategy Locking** | Parser locks onto the working strategy after 3 consecutive successes for fast, reliable parsing |
+| 📐 **Multiple Field Layouts** | Supports standard 80-byte, compact, and wide (3-digit score) MP-70 packet layouts |
+| 📝 **ASCII Text Mode** | Parses VCG/VideoStamp+ character generator output (CR/LF delimited ASCII lines) |
+| 📚 **Documentation Viewer** | Browse protocol docs, reference PDFs, and research notes from the web dashboard |
+| 🔬 **Protocol Research** | Compiled reverse-engineering notes from MP-69D decoder, PoC\|\|GTFO, and community sources |
+| 📊 **Packet Diagnostics** | Unrecognized packets get detailed hex/ASCII/byte analysis logged for reverse engineering |
+| 🔌 **Serial Reader Fix** | Serial connect now properly starts the reader thread (previously opened port but never read data) |
+| 📼 **Serial Recording** | Record raw serial data to binary files for offline analysis |
 
 ### Upgrade Notes
 
-If upgrading from v2.1.0:
+If upgrading from v2.2.0:
 ```bash
 cd /path/to/SLAP
 git pull
@@ -237,7 +240,7 @@ slap stop                     # Stop the server
 ### 🟢 Implemented Features
 | Feature | Description | Status |
 |---------|-------------|--------|
-| 📡 **MP-70 Serial Parser** | Binary protocol decoder for RS-232 scoreboard data | ✅ Complete |
+| 📡 **MP-70 Adaptive Parser** | Multi-strategy protocol decoder with auto-detection and locking | ✅ Complete |
 | 🎬 **CasparCG AMCP Client** | Full AMCP protocol over TCP sockets | ✅ Complete |
 | 📺 **OBS WebSocket Client** | Scene/source control via obs-websocket | ✅ Complete |
 | 🖥️ **Web Dashboard** | Modern control panel with glass morphism UI and live preview | ✅ Complete |
@@ -249,6 +252,9 @@ slap stop                     # Stop the server
 | 🔄 **Preview/Live Modes** | Test without hardware, switch when ready | ✅ Complete |
 | 🌐 **Web-Only Mode** | Run dashboard without serial or simulation | ✅ Complete |
 | 📦 **Local Dependencies** | All JS libraries hosted locally (no CDN) | ✅ Complete |
+| 📚 **Documentation Viewer** | Browse protocol docs and reference PDFs from the web UI | ✅ Complete |
+| 📼 **Serial Recording** | Record raw serial data to binary files for offline analysis | ✅ Complete |
+| 🔬 **Packet Diagnostics** | Detailed hex/ASCII/byte analysis of unrecognized packets | ✅ Complete |
 | 🔌 **REST API** | 75+ endpoints for full control | ✅ Complete |
 | 💾 **SQLite Database** | Game history, events, player stats persistence | ✅ Complete |
 | 📊 **Statistics Tracking** | Goals, assists, PIM, season leaders | ✅ Complete |
@@ -409,9 +415,11 @@ slap -serial:/dev/ttyUSB0         # Set serial port
 
 1. Access the MP-70 setup menu
 2. Navigate to sport-specific setup
-3. When prompted "VIDEO CHAR?", answer **NO**
-   - This sets RS-232 to ProLine data format
+3. When prompted "VIDEO CHAR?", answer **NO** for ProLine data (recommended)
+   - **NO** = ProLine binary format (STX/ETX framed, default)
+   - **YES** = VCG/VideoStamp+ ASCII text format (also supported by SLAP)
 4. Verify RS-232 output is enabled
+5. Note which connector (CONN.1, CONN.2, CONN3&4) the cable is on
 
 ```
 MP-70 RS-232 Port → Serial Cable → USB Adapter → Computer
@@ -471,7 +479,7 @@ Edit `src/config/default.json`:
 | Setting | Description |
 |---------|-------------|
 | `port` | Serial port path (e.g., `/dev/ttyUSB0`, `COM4`) |
-| `baudrate` | Always 9600 for MP-70 |
+| `baudrate` | 9600 (standard) or 19200 (some firmware) |
 
 ### CasparCG Settings
 
@@ -603,6 +611,18 @@ SLAP stores game history, events, and player statistics in a SQLite database. Th
 | `GET` | `/api/serial/ports` | List available serial ports |
 | `GET` | `/api/serial/status` | Get serial connection status |
 | `POST` | `/api/serial/config` | Configure serial port |
+| `POST` | `/api/serial/connect` | Connect to serial port and start reader |
+| `POST` | `/api/serial/disconnect` | Disconnect from serial port |
+| `POST` | `/api/serial/recording/start` | Start recording raw serial data |
+| `POST` | `/api/serial/recording/stop` | Stop recording |
+| `GET` | `/api/serial/recording/status` | Get recording status |
+
+#### Documentation Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/docs` | List available documentation files |
+| `GET` | `/docs/file/<filename>` | Serve a documentation file |
 
 #### Simulator Endpoints
 
@@ -828,34 +848,56 @@ SLAP sends these commands to CasparCG:
 
 ## 📡 MP-70 Protocol
 
-> The MP-70 controller outputs game data via RS-232 serial connection using a **binary protocol**.
+> The MP-70 controller outputs game data via RS-232 serial connection using a **proprietary protocol** that varies by firmware, board type, and configuration. SLAP's adaptive parser handles multiple formats automatically.
+>
+> For comprehensive protocol research, see [`docs/PROTOCOL_NOTES.md`](src/docs/PROTOCOL_NOTES.md) and the Documentation page in the web dashboard.
 
 ### Serial Configuration
 
 | Parameter | Value |
 |-----------|-------|
-| Baud Rate | 9600 |
+| Baud Rate | **9600** (standard) or **19200** (some firmware) |
 | Data Bits | 8 |
 | Parity | None |
 | Stop Bits | 1 |
 | Flow Control | None |
 
-### Packet Structure
+> **Tip:** If 9600 doesn't work, try 19200. The baud rate varies by firmware version.
 
-All packets are wrapped with ASCII control characters:
+### Data Formats
 
-| Byte | Value | Name | Description |
-|------|-------|------|-------------|
-| Start | `0x02` | STX | Start of Text |
-| End | `0x03` | ETX | End of Text |
+The MP-70 has two RS-232 output modes (set via "VIDEO CHAR?" menu):
 
-Packets must be at least **80 bytes** to be considered valid.
+| Mode | Setting | Format |
+|------|---------|--------|
+| **ProLine** (default) | VIDEO CHAR? = NO | STX/ETX framed binary, 80-byte packets |
+| **VCG/VideoStamp+** | VIDEO CHAR? = YES | CR/LF delimited ASCII text lines |
 
-### Packet Types
+### Adaptive Parser
+
+SLAP's parser auto-detects the format using 5 strategies, tried in order:
+
+| # | Strategy | Description |
+|---|----------|-------------|
+| 1 | **Type-byte dispatch** | Standard MP-70 type bytes: `'C'` (clock), `'H'` (score) |
+| 2 | **Alternative type bytes** | Other sport-specific indicators (`S`, `G`, `D`, `F`, `B`, etc.) |
+| 3 | **Layout-only** | Ignores type byte, tries all field layouts against the packet |
+| 4 | **ASCII text scan** | Regex search for score/clock patterns in readable text |
+| 5 | **Clock extraction** | Finds embedded MM:SS times anywhere in the data |
+
+After **3 consecutive successes** with the same strategy, the parser **locks** onto it for fast processing. If the locked strategy fails (e.g., sport change on controller), it falls back to trying all strategies.
+
+### Supported Field Layouts
+
+| Layout | Min Length | Score Fields | Use Case |
+|--------|-----------|-------------|----------|
+| **Standard** | 80 bytes | 2-digit scores at [13:15], [29:31] | Default MP-70 hockey |
+| **Wide** | 80 bytes | 3-digit scores at [13:16], [29:32] | Basketball/football |
+| **Compact** | 40 bytes | Tighter field packing | Some firmware variants |
+
+### Packet Structure (Standard Layout)
 
 #### Type 'C' - Clock Update
-
-Clock packets contain only the game clock time.
 
 ```
 Position  Length  Field          Format
@@ -867,13 +909,9 @@ Position  Length  Field          Format
 [79]      1       ETX            0x03
 ```
 
-**Clock Format:** 4 ASCII digits (MMSS)
-- `"1500"` = 15:00
-- `"0130"` = 01:30
+**Clock Format:** 4 ASCII digits (MMSS) - `"1500"` = 15:00, `"0130"` = 01:30
 
 #### Type 'H' - Score/Game State Update
-
-Score packets contain the full game state.
 
 ```
 Position  Length  Field              Format
@@ -889,6 +927,8 @@ Position  Length  Field              Format
 [67:71]   4       Away Penalty 2     ASCII "MMSS"
 [79]      1       ETX                0x03
 ```
+
+> **Note:** The "unknown" regions between fields may contain shots on goal, timeouts, or sport-specific data depending on the board type (40+ types supported by the MP-70).
 
 ### Protocol Capture
 
@@ -959,7 +999,7 @@ SLAP/
     │   ├── simulator/      # Fake serial for testing
     │   └── web/            # Flask dashboard
     │       ├── app.py      # API routes & Socket.IO
-    │       ├── templates/  # Dashboard HTML
+    │       ├── templates/  # Dashboard HTML (index, docs)
     │       └── static/js/  # Local JS libraries
     ├── templates/          # Broadcast overlay templates
     │   ├── scorebug.html   # Main scorebug
@@ -982,8 +1022,12 @@ SLAP/
     │   │   ├── replay.html
     │   │   └── ticker.html
     │   └── Logos/          # Team logo files
-    └── docs/               # Reference docs
-        └── MP-70_Manual.pdf
+    └── docs/               # Reference docs (viewable at /docs)
+        ├── MP-70_Manual.pdf
+        ├── MP-70_Quick_Reference.pdf
+        ├── SP-70_Statistics_Controller.pdf
+        ├── pocgtfo-fairplay-reversing.pdf
+        └── PROTOCOL_NOTES.md
 ```
 
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>
@@ -1001,11 +1045,18 @@ sudo usermod -a -G dialout $USER
 # Log out and back in
 ```
 
+**All packets "invalid":**
+- Try both baud rates (9600 and 19200)
+- Enable debug logging: `slap start --debug`
+- Start a serial recording from the web UI to capture raw data
+- Toggle the VIDEO CHAR? setting on the MP-70 (try both YES and NO)
+- Check which connector (CONN.1, CONN.2, CONN3&4) the cable is on
+
 **No data received:**
-- Verify MP-70 is set to ProLine data format (not VIDEO CHAR)
-- Check cable connections
-- Try different USB port
-- Verify baud rate is 9600
+- Verify the RS-232 cable is connected (not the 1/4" scoreboard jacks)
+- Check cable: straight-through DB-9, pins 2 (RX), 3 (TX), 5 (GND)
+- Try different USB port or USB-to-serial adapter
+- Try both baud rates (9600 and 19200)
 
 </details>
 
@@ -1057,7 +1108,7 @@ sudo usermod -a -G dialout $USER
 <tr><td>
 
 **Core Systems**
-- [x] MP-70 binary protocol parser (200+ lines)
+- [x] MP-70 adaptive protocol parser (5 strategies, auto-locking)
 - [x] CasparCG AMCP client (205 lines)
 - [x] OBS WebSocket client (363 lines)
 - [x] Thread-safe game state management
