@@ -2003,6 +2003,36 @@ def create_app(config_path=None) -> Flask:
 
         return jsonify({"status": "ok", **get_recording_status()})
 
+    # ============ Documentation Routes ============
+
+    @app.route("/docs")
+    def documentation():
+        """Documentation viewer page."""
+        return render_template("docs.html", config=get_config())
+
+    @app.route("/api/docs", methods=["GET"])
+    def list_docs():
+        """List available documentation files."""
+        docs_dir = Path(__file__).parent.parent.parent / "docs"
+        docs = []
+        if docs_dir.exists():
+            for f in sorted(docs_dir.iterdir()):
+                if f.suffix.lower() in ('.pdf', '.md', '.txt', '.html'):
+                    docs.append({
+                        "name": f.stem.replace("_", " ").replace("-", " "),
+                        "filename": f.name,
+                        "type": f.suffix.lower().lstrip('.'),
+                        "size": f.stat().st_size,
+                        "url": f"/docs/file/{f.name}"
+                    })
+        return jsonify({"status": "ok", "docs": docs})
+
+    @app.route("/docs/file/<path:filename>")
+    def serve_doc(filename):
+        """Serve a documentation file."""
+        docs_dir = Path(__file__).parent.parent.parent / "docs"
+        return send_from_directory(str(docs_dir), filename)
+
     # ============ WebSocket Events ============
 
     @socketio.on("connect")
