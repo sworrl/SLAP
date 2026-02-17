@@ -95,13 +95,14 @@
 |--------|-------------|
 | 🧠 **Adaptive Protocol Parser** | Complete parser rewrite with 5 parsing strategies - auto-detects unknown packet formats from real hardware |
 | 🔒 **Strategy Locking** | Parser locks onto the working strategy after 3 consecutive successes for fast, reliable parsing |
-| 📐 **Multiple Field Layouts** | Supports standard 80-byte, compact, and wide (3-digit score) MP-70 packet layouts |
+| 📐 **Multiple Field Layouts** | Supports standard 80-byte, short 55-byte (confirmed from real hardware), compact, and wide (3-digit score) layouts |
 | 📝 **ASCII Text Mode** | Parses VCG/VideoStamp+ character generator output (CR/LF delimited ASCII lines) |
 | 📚 **Documentation Viewer** | Browse protocol docs, reference PDFs, and research notes from the web dashboard |
 | 🔬 **Protocol Research** | Compiled reverse-engineering notes from MP-69D decoder, PoC\|\|GTFO, and community sources |
 | 📊 **Packet Diagnostics** | Unrecognized packets get detailed hex/ASCII/byte analysis logged for reverse engineering |
 | 🔌 **Serial Reader Fix** | Serial connect now properly starts the reader thread (previously opened port but never read data) |
 | 📼 **Serial Recording** | Record raw serial data to binary files for offline analysis |
+| 🏟️ **Real Hardware Validation** | 55-byte field map confirmed from 3,130 live packets at Tony's rink (167 unique score patterns) |
 
 ### Upgrade Notes
 
@@ -889,9 +890,10 @@ After **3 consecutive successes** with the same strategy, the parser **locks** o
 
 ### Supported Field Layouts
 
-| Layout | Min Length | Score Fields | Use Case |
-|--------|-----------|-------------|----------|
+| Layout | Length | Score Fields | Use Case |
+|--------|--------|-------------|----------|
 | **Standard** | 80 bytes | 2-digit scores at [13:15], [29:31] | Default MP-70 hockey |
+| **Short** | 55 bytes | 1-digit scores at [13], [39] + penalty player #s | **Confirmed from real hardware** |
 | **Wide** | 80 bytes | 3-digit scores at [13:16], [29:32] | Basketball/football |
 | **Compact** | 40 bytes | Tighter field packing | Some firmware variants |
 
@@ -904,12 +906,15 @@ Position  Length  Field          Format
 --------  ------  -----          ------
 [0]       1       STX            0x02
 [1]       1       Type           'C' (0x43)
-[2:6]     4       Clock          ASCII "MMSS"
-[7:79]    73      Padding        (unused)
-[79]      1       ETX            0x03
+[2:6]     4       Clock          ASCII "MMSS" (BCD-like)
+[7:10]    3       Period+Flags   Hundreds digit = period (e.g. "160"=P1, "260"=P2, "360"=P3)
+...       ...     Padding        (unused)
+[last]    1       ETX            0x03
 ```
 
-**Clock Format:** 4 ASCII digits (MMSS) - `"1500"` = 15:00, `"0130"` = 01:30
+**Clock Format:** BCD-like packed digits - `"1000"` = 10:00, `"959"` = 9:59, `"900"` = 9:00, `"859"` = 8:59 (rolls over at century boundaries)
+
+**Period:** Encoded in C packets (not H packets) at bytes [7:10]. The hundreds digit is the period number.
 
 #### Type 'H' - Score/Game State Update
 
@@ -929,6 +934,29 @@ Position  Length  Field              Format
 ```
 
 > **Note:** The "unknown" regions between fields may contain shots on goal, timeouts, or sport-specific data depending on the board type (40+ types supported by the MP-70).
+
+#### Type 'H' - Short Format (55-byte, confirmed from real hardware)
+
+```
+Position  Length  Field              Format
+--------  ------  -----              ------
+[0]       1       STX                0x02
+[1]       1       Type               'H' (0x48)
+[2:6]     4       Clock              ASCII BCD digits
+[13]      1       Home Score         ASCII digit (single)
+[16:18]   2       Home Pen1 Player   Jersey number (ASCII)
+[19:22]   3       Home Pen1 Time     BCD seconds ("100"=1:00, "059"=0:59)
+[22:24]   2       Home Pen2 Player   Jersey number (ASCII)
+[25:28]   3       Home Pen2 Time     BCD seconds
+[39]      1       Away Score         ASCII digit (single)
+[42:44]   2       Away Pen1 Player   Jersey number (ASCII)
+[45:48]   3       Away Pen1 Time     BCD seconds
+[48:50]   2       Away Pen2 Player   Jersey number (ASCII)
+[51:54]   3       Away Pen2 Time     BCD seconds
+[54]      1       ETX                0x03
+```
+
+> **Note:** Period is NOT in the H packet in this format — it comes from C packets (bytes [7:10]). This layout was confirmed by analyzing 3,130 packets (167 unique H patterns) from a live game. See [`docs/DEBUG_LOG_ANALYSIS_2026-02-16.md`](src/docs/DEBUG_LOG_ANALYSIS_2026-02-16.md) for the full analysis.
 
 ### Protocol Capture
 
@@ -1027,7 +1055,9 @@ SLAP/
         ├── MP-70_Quick_Reference.pdf
         ├── SP-70_Statistics_Controller.pdf
         ├── pocgtfo-fairplay-reversing.pdf
-        └── PROTOCOL_NOTES.md
+        ├── PROTOCOL_NOTES.md
+        ├── DEBUG_LOG_ANALYSIS_2026-02-16.md  # Real hardware packet analysis
+        └── slap_debug_2026-02-16.log         # Raw debug log from live game
 ```
 
 <p align="right"><a href="#-table-of-contents">⬆ Back to top</a></p>

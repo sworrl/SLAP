@@ -135,8 +135,9 @@ def start_recording(filepath: Optional[str] = None) -> str:
         logger.info(f"Started serial recording to: {_recording_path}")
         return _recording_path
     except PermissionError:
+        failed_path = _recording_path
         _recording_path = None
-        raise PermissionError(f"Cannot write to: {_recording_path}. Check permissions.")
+        raise PermissionError(f"Cannot write to: {failed_path}. Check permissions.")
     except Exception as e:
         logger.error(f"Failed to start recording: {e}")
         _recording_path = None
@@ -270,7 +271,33 @@ LAYOUT_MP70_WIDE = {
     "away_pen2": (67, 71),
 }
 
-ALL_LAYOUTS = [LAYOUT_MP70_STANDARD, LAYOUT_MP70_WIDE, LAYOUT_MP70_COMPACT]
+# Confirmed from real MP-70 hardware (Tony's rink, Feb 2026)
+# 55-byte STX/ETX packets. Field map verified with 167 unique score patterns,
+# penalty countdowns for 4 simultaneous players, and score changes 0-0 through 3-5.
+# Period is NOT in H packets — it's in C packets at byte [7].
+# See docs/DEBUG_LOG_ANALYSIS_2026-02-16.md for full analysis.
+LAYOUT_MP70_SHORT = {
+    "name": "MP-70 Short (55-byte)",
+    "min_length": 55,
+    "max_length": 70,       # Prevent matching 80-byte standard packets
+    "type_byte": 1,
+    "clock": (2, 6),
+    "home_score": (13, 14),     # Single ASCII digit
+    "away_score": (39, 40),     # Single ASCII digit
+    # Period comes from C packets, not H — field intentionally omitted
+    # Penalties include player jersey numbers (new format):
+    #   player# (2 bytes) + space + time (3 bytes BCD)
+    "home_pen1_player": (16, 18),
+    "home_pen1": (19, 22),      # 3-digit BCD seconds (e.g. "100"=1:00)
+    "home_pen2_player": (22, 24),
+    "home_pen2": (25, 28),
+    "away_pen1_player": (42, 44),
+    "away_pen1": (45, 48),
+    "away_pen2_player": (48, 50),
+    "away_pen2": (51, 54),
+}
+
+ALL_LAYOUTS = [LAYOUT_MP70_STANDARD, LAYOUT_MP70_WIDE, LAYOUT_MP70_SHORT, LAYOUT_MP70_COMPACT]
 
 
 class MP70Parser:
@@ -291,6 +318,7 @@ class MP70Parser:
 
     def __init__(self):
         self._last_clock = "20:00"
+        self._last_period = "1"        # Period from C packets (bytes [7:10])
         self._detected_format = None   # "stx_etx", "ascii_lines", etc.
         self._detected_layout = None   # Which field layout works
         self._locked_strategy = None   # Full strategy string that's been locked
@@ -440,6 +468,8 @@ class MP70Parser:
         """Try to parse a packet using a specific field layout."""
         if len(packet) < layout["min_length"]:
             return None
+        if "max_length" in layout and len(packet) > layout["max_length"]:
+            return None
 
         try:
             hs = layout["home_score"]
@@ -452,10 +482,15 @@ class MP70Parser:
             if away_score is None:
                 return None
 
-            ps = layout["period"]
-            period = self._try_parse_period(packet[ps[0]:ps[1]])
-            if period is None:
-                return None
+            # Period may come from H packet or from C packet (stored in _last_period).
+            # The 55-byte format has no period in H packets — it's in C packets only.
+            period = self._last_period  # Default from most recent C packet
+            if "period" in layout:
+                ps = layout["period"]
+                if ps[1] <= len(packet):
+                    parsed_period = self._try_parse_period(packet[ps[0]:ps[1]])
+                    if parsed_period is not None:
+                        period = parsed_period
 
             # Parse penalties (optional - don't fail if missing)
             home_penalties = []
@@ -576,6 +611,18 @@ class MP70Parser:
             if clock:
                 self._last_clock = clock
                 logger.debug(f"Clock updated: {clock}")
+            # Extract period from trailing bytes (e.g. "160"=P1, "260"=P2, "360"=P3)
+            # The hundreds digit is the period number
+            if len(packet) >= 10:
+                try:
+                    period_field = packet[7:10].decode("ascii", errors="replace").strip()
+                    if period_field and period_field[0].isdigit() and period_field[0] != "0":
+                        new_period = period_field[0]
+                        if new_period != self._last_period:
+                            logger.info(f"Period changed: {self._last_period} → {new_period} (from C packet '{period_field}')")
+                        self._last_period = new_period
+                except Exception:
+                    pass
             record_packet("C", valid=True)
             return None
 

@@ -263,7 +263,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/goal", methods=["POST"])
     def trigger_goal_splash():
         """Trigger goal splash overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         goal_data = {
             "team": data.get("team", "home"),
@@ -287,28 +287,28 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/shots", methods=["POST"])
     def update_shots():
         """Update shot counter."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("shots", data)
         return jsonify({"status": "ok", "data": data})
 
     @app.route("/api/overlay/penalty", methods=["POST"])
     def update_penalties():
         """Update penalty box display."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("penalties", data)
         return jsonify({"status": "ok"})
 
     @app.route("/api/overlay/penalty/add", methods=["POST"])
     def add_overlay_penalty():
         """Add a penalty to the penalty box."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("add_penalty", data)
         return jsonify({"status": "ok"})
 
     @app.route("/api/overlay/player", methods=["POST"])
     def show_player_card():
         """Show player card overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("show_player", data)
         return jsonify({"status": "ok"})
 
@@ -321,7 +321,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/period", methods=["POST"])
     def show_period_summary():
         """Show period summary overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # Fill in current game data if not provided
         if "homeScore" not in data:
@@ -343,7 +343,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/intro", methods=["POST"])
     def show_game_intro():
         """Show game intro overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("game_intro", data)
         return jsonify({"status": "ok"})
 
@@ -356,7 +356,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/goalie", methods=["POST"])
     def show_goalie_stats():
         """Show goalie stats overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("show_goalie", data)
         return jsonify({"status": "ok"})
 
@@ -369,7 +369,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/powerplay", methods=["POST"])
     def show_powerplay():
         """Show power play overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("power_play", data)
         return jsonify({"status": "ok"})
 
@@ -382,7 +382,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/stars", methods=["POST"])
     def show_three_stars():
         """Show three stars overlay."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("three_stars", data)
         return jsonify({"status": "ok"})
 
@@ -395,7 +395,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/replay", methods=["POST"])
     def show_replay():
         """Show replay bug."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("replay", data)
         return jsonify({"status": "ok"})
 
@@ -408,7 +408,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/ticker", methods=["POST"])
     def show_ticker():
         """Show scores ticker."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("ticker", data)
         return jsonify({"status": "ok"})
 
@@ -421,7 +421,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/overlay/ticker/update", methods=["POST"])
     def update_ticker():
         """Update ticker scores."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         socketio.emit("update_ticker", data)
         return jsonify({"status": "ok"})
 
@@ -435,7 +435,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/state", methods=["POST"])
     def update_state():
         """Update game state manually."""
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
@@ -454,7 +454,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/goal", methods=["POST"])
     def trigger_goal():
         """Trigger a goal event."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         side = data.get("side", "HOME").upper()
 
         if side not in ("HOME", "AWAY"):
@@ -481,7 +481,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/penalty", methods=["POST"])
     def add_penalty():
         """Add a penalty."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         side = data.get("side", "HOME").upper()
         duration = data.get("duration", 120)  # Default 2 minutes
 
@@ -595,7 +595,7 @@ def create_app(config_path=None) -> Flask:
         """Switch between preview and live mode."""
         global _current_mode
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         new_mode = data.get("mode", "").lower()
 
         if new_mode not in ("preview", "live"):
@@ -1074,7 +1074,7 @@ def create_app(config_path=None) -> Flask:
         """Connect to OBS WebSocket."""
         global _obs_client
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         host = data.get("host", "localhost")
         port = data.get("port", 4455)
         password = data.get("password", "")
@@ -1138,7 +1138,7 @@ def create_app(config_path=None) -> Flask:
         if not _obs_client or not _obs_client.connected:
             return jsonify({"error": "Not connected to OBS"}), 503
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         slap_url = data.get("slap_url", f"http://localhost:{get_config().web.port}")
 
         if _obs_client.setup_scorebug(slap_url):
@@ -1209,7 +1209,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/teams", methods=["POST"])
     def update_teams():
         """Update team configuration."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         config = get_config()
 
         # Update home team
@@ -1308,7 +1308,7 @@ def create_app(config_path=None) -> Flask:
     @app.route("/api/serial/config", methods=["POST"])
     def serial_config():
         """Configure serial port settings."""
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         config = get_config()
 
         if "port" in data:
@@ -1437,7 +1437,7 @@ def create_app(config_path=None) -> Flask:
         if team not in ("home", "away"):
             return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data:
             return jsonify({"error": "No data provided"}), 400
 
@@ -1456,7 +1456,7 @@ def create_app(config_path=None) -> Flask:
         if team not in ("home", "away"):
             return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
 
-        data = request.get_json()
+        data = request.get_json(silent=True)
         if not data or "number" not in data:
             return jsonify({"error": "Player number is required"}), 400
 
@@ -1539,7 +1539,7 @@ def create_app(config_path=None) -> Flask:
         if team not in ("home", "away"):
             return jsonify({"error": "Invalid team. Use 'home' or 'away'"}), 400
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         roster = load_roster()
         players = roster.get(team, {}).get("players", [])
 
@@ -1593,7 +1593,7 @@ def create_app(config_path=None) -> Flask:
     def create_game():
         """Create a new game."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         game_id = db.create_game(
             home_team=data.get("home_team", state.game.home_name or "HOME"),
             away_team=data.get("away_team", state.game.away_name or "AWAY"),
@@ -1623,7 +1623,7 @@ def create_app(config_path=None) -> Flask:
     def update_game(game_id):
         """Update game details."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         success = db.update_game(game_id, **data)
         if success:
             return jsonify({"status": "ok"})
@@ -1633,7 +1633,7 @@ def create_app(config_path=None) -> Flask:
     def end_game(game_id):
         """Mark a game as ended."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         status = data.get("status", "final")
         success = db.end_game(game_id, status=status)
         if success:
@@ -1671,7 +1671,7 @@ def create_app(config_path=None) -> Flask:
     def log_game_goal(game_id):
         """Log a goal for a game."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         event_id = db.log_goal(
             game_id=game_id,
             team=data.get("team", "home"),
@@ -1690,7 +1690,7 @@ def create_app(config_path=None) -> Flask:
     def log_game_penalty(game_id):
         """Log a penalty for a game."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         event_id = db.log_penalty(
             game_id=game_id,
             team=data.get("team", "home"),
@@ -1707,7 +1707,7 @@ def create_app(config_path=None) -> Flask:
     def log_game_shot(game_id):
         """Log a shot for a game."""
         db = get_db()
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         db.log_shot(game_id, team=data.get("team", "home"))
         return jsonify({"status": "ok"})
 
@@ -1878,7 +1878,7 @@ def create_app(config_path=None) -> Flask:
         settings_file = Path.home() / ".config" / "slap" / "settings.json"
         settings_file.parent.mkdir(parents=True, exist_ok=True)
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
 
         # Load existing settings
         settings = {}
@@ -1976,7 +1976,7 @@ def create_app(config_path=None) -> Flask:
         """Start recording serial data to a file."""
         from ..parser.mp70 import start_recording
 
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         filepath = data.get("filepath")
 
         try:
@@ -2017,7 +2017,7 @@ def create_app(config_path=None) -> Flask:
         docs = []
         if docs_dir.exists():
             for f in sorted(docs_dir.iterdir()):
-                if f.suffix.lower() in ('.pdf', '.md', '.txt', '.html'):
+                if f.suffix.lower() in ('.pdf', '.md', '.txt', '.html', '.log'):
                     docs.append({
                         "name": f.stem.replace("_", " ").replace("-", " "),
                         "filename": f.name,

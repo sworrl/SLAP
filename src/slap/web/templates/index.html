@@ -1821,8 +1821,11 @@
 
         // API calls
         async function api(endpoint, method = 'GET', data = null) {
-            const options = { method, headers: { 'Content-Type': 'application/json' } };
-            if (data) options.body = JSON.stringify(data);
+            const options = { method };
+            if (method !== 'GET') {
+                options.headers = { 'Content-Type': 'application/json' };
+                options.body = JSON.stringify(data || {});
+            }
             const response = await fetch(`/api${endpoint}`, options);
 
             // Check content type before parsing
