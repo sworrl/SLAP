@@ -956,7 +956,7 @@ Position  Length  Field              Format
 [54]      1       ETX                0x03
 ```
 
-> **Note:** Period is NOT in the H packet in this format — it comes from C packets (bytes [7:10]). This layout was confirmed by analyzing 3,130 packets (167 unique H patterns) from a live game. See [`docs/DEBUG_LOG_ANALYSIS_2026-02-16.md`](src/docs/DEBUG_LOG_ANALYSIS_2026-02-16.md) for the full analysis.
+> **Note:** Period is NOT in the H packet in this format, it comes from C packets (bytes [7:10]). This layout was confirmed by analyzing 3,130 packets (167 unique H patterns) from a live game. See [`docs/DEBUG_LOG_ANALYSIS_2026-02-16.md`](src/docs/DEBUG_LOG_ANALYSIS_2026-02-16.md) for the full analysis.
 
 ### Protocol Capture
 
